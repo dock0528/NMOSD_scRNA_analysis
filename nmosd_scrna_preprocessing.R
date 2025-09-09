@@ -4,7 +4,7 @@ install.packages("SeuratObject")
 install.packages("Seurat")
 library(SeuratObject)
 library(Seurat)
-data=readRDS("./nmo25_pbmc.rds")
+data=readRDS("../scRNA_DATA/nmo25_pbmc.rds")
 head(data@assays$RNA@counts)
 
 colnames(data@meta.data)
@@ -33,7 +33,7 @@ write.csv(control_cell_identities , file = "cell_identities_control.csv", row.na
 healthy_cell_identities<-control_cell_identities[grepl("^HC",control_cell_identities$Cell_ID),]
 
 
-################【NMOSD scRNA data輸出】#############
+################【NMOSD scRNA data】#############
 # 0) 需要的套件
 library(Seurat)
 library(Matrix)
@@ -42,42 +42,49 @@ library(Matrix)
 raw_count <- GetAssayData(data, assay = "RNA", slot = "counts")  # dgCMatrix 稀疏矩陣
 print(dim(raw_count))     # 26135 x 195817 (gene x cell)
 
-# 3) 10X 需要基因名稱唯一；若重複就自動去重
-if (any(duplicated(rownames(raw_count)))) {
-  message("Detected duplicated gene IDs; making them unique with suffixes")
-  rownames(raw_count) <- make.unique(rownames(raw_count))
+library(Seurat)
+library(dplyr)
+
+# ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
+if (!"percent.mt" %in% colnames(data@meta.data)) {
+  data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
+}
+#----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
+if (!"percent.hb" %in% colnames(data@meta.data)) {
+  data[["percent.hb"]] <- PercentageFeatureSet(data, pattern = "^HB[AB][12]")
 }
 
-# （可選）如果你想去掉 Ensembl 版本號：ENSG000001.12 -> ENSG000001
-# rownames(raw) <- sub("\\.\\d+$", "", rownames(raw))
+#----paper criteria
+umi_min <- 1000
+feature_min <- 200
+mitochondrial_max  <- 12
+hemoglobin_max  <- 10
 
-# 4) 建立輸出資料夾
-dir.create("10x_raw", showWarnings = FALSE)
+# 99 百分位
+p99_umi  <- quantile(data$nCount_RNA,   0.99, na.rm = TRUE)
+p99_feature <- quantile(data$nFeature_RNA, 0.99, na.rm = TRUE)
 
-# 5) 寫出 matrix.mtx.gz
-Matrix::writeMM(raw, file = gzfile("10x_raw/matrix.mtx.gz"))
+cat(sprintf("99th percentile: UMI=%.0f, Features=%.0f\n", p99_umi, p99_feature))
+#99th percentile: UMI=11798, Features=3240
 
-# 6) 寫出 features.tsv.gz（3 欄：gene_id, gene_name, feature_type）
-features <- data.frame(
-  gene_id     = rownames(raw),
-  gene_name   = rownames(raw),         # 若你有 symbol 對照可放在這欄
-  feature_type= "Gene Expression",
-  check.names = FALSE
+#----計算不符合paper criteria的cell數
+flag_lowUMI   <- data$nCount_RNA    < umi_min
+flag_hiUMI    <- data$nCount_RNA    > p99_umi
+flag_lowFeat  <- data$nFeature_RNA  < feature_min
+flag_hiFeat   <- data$nFeature_RNA  > p99_feature
+flag_hiMT     <- data$percent.mt    > mitochondrial_max
+flag_hiHB     <- data$percent.hb    > hemoglobin_max 
+
+flag_any <- flag_lowUMI | flag_hiUMI | flag_lowFeat | flag_hiFeat | flag_hiMT | flag_hiHB
+
+#----計算結果
+overall <- data.frame(
+  criterion = c("UMI < 1000", "UMI > 99th pct", "Features < 200",
+                "Features > 99th pct", "Mito % > 12", "Hemoglobin % > 10",
+                "Any of above"),
+  n_cells   = c(sum(flag_lowUMI), sum(flag_hiUMI), sum(flag_lowFeat),
+                sum(flag_hiFeat), sum(flag_hiMT), sum(flag_hiHB),
+                sum(flag_any))
 )
-write.table(features, file = gzfile("10x_raw/features.tsv.gz"),
-            sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
-
-# 7) 寫出 barcodes.tsv.gz
-write.table(colnames(raw), file = gzfile("10x_raw/barcodes.tsv.gz"),
-            sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
-
-# 8) （強烈建議）輸出每個細胞對應的樣本 ID，方便 Scrublet 逐樣本跑
-meta_min <- data.frame(
-  barcode = colnames(data),
-  sample  = data$orig.ident,
-  row.names = NULL, check.names = FALSE
-)
-write.csv(meta_min, "10x_raw/barcode_sample_map.csv", row.names = FALSE)
-
-message("✅ Done. Files are in ./10x_raw/")
-
+overall$percent <- round(100 * overall$n_cells / ncol(data), 3)
+print(overall, row.names = FALSE)
