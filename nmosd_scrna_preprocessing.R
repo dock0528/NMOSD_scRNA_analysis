@@ -1,7 +1,5 @@
-setwd("C:/Users/JANE/Desktop/Wang實驗室/NMOSD研究計畫/scRNA")
-
-install.packages("SeuratObject")
-install.packages("Seurat")
+#install.packages("SeuratObject")
+#install.packages("Seurat")
 library(SeuratObject)
 library(Seurat)
 data=readRDS("../scRNA_DATA/nmo25_pbmc.rds")
