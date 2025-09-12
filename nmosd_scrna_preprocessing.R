@@ -38,17 +38,20 @@ library(dplyr)
 library(tidyr)
 
 #---{取出 raw counts}
-raw_count <- GetAssayData(data, assay = "RNA", slot = "counts")
-print(dim(raw_count))   # gene x cell
+raw_count <- GetAssayData(data, assay = "RNA", slot = "counts")#從RNA提取counts
+print(dim(raw_count))   # gene x cell: 26135 x 195817
 
 # ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
+#單位:%
 if (!"percent.mt" %in% colnames(data@meta.data)) {
   data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
 }
 #----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
+#單位:%
 if (!"percent.hb" %in% colnames(data@meta.data)) {
   data[["percent.hb"]] <- PercentageFeatureSet(data, pattern = "^HB[AB][12]")
-}
+}    #^從字首匹配HB 、第3個字A or B、第4個字1 or 2
+
 #----paper criteria
 umi_min <- 1000
 feature_min <- 200
@@ -72,29 +75,30 @@ qc_df <- data.frame(
 p99_table <- qc_df %>%
   group_by(sample) %>%
   summarise(
-    p99_umi     = quantile(nCount_RNA,   0.99, na.rm = TRUE),
-    p99_feature = quantile(nFeature_RNA, 0.99, na.rm = TRUE),
-    .groups = "drop"
+    p99_umi     = quantile(nCount_RNA,   0.99, na.rm = TRUE), #99th 的cell UMIs
+    p99_feature = quantile(nFeature_RNA, 0.99, na.rm = TRUE), #99th 的genes
+    .groups = "drop" #不要保留分組形式
   )
 
-cat("Per-sample 99th percentiles:\n")
-print(p99_table)
+cat("Per sample 99th percentiles:\n")
+print(n=25,p99_table)
 
 #Each sample filter criteria 
 qc_df <- qc_df %>%
-  left_join(p99_table, by = "sample") %>%
-  mutate(
+  left_join(p99_table, by = "sample") %>% #依sample把p99_table和qc_df合併
+  mutate( #加上 QC 的標記欄位(TRUE / FALSE)
     flag_lowUMI   = nCount_RNA   < umi_min,
     flag_hiUMI    = nCount_RNA   > p99_umi,
     flag_lowFeat  = nFeature_RNA < feature_min,
     flag_hiFeat   = nFeature_RNA > p99_feature,
     flag_hiMT     = percent.mt   > mitochondrial_max,
     flag_hiHB     = percent.hb   > hemoglobin_max,
-    flag_any      = flag_lowUMI | flag_hiUMI | flag_lowFeat | flag_hiFeat | flag_hiMT | flag_hiHB
+    flag_any      = flag_lowUMI | flag_hiUMI | flag_lowFeat | flag_hiFeat | flag_hiMT | flag_hiHB 
+    #if任何一個flag是TRUE，就把這個cell標記為TRUE
   )
 
 # 把cell barcodes放在 rownames(確保之後subset data對得上)
-rownames(qc_df) <- colnames(data)
+rownames(qc_df) <- colnames(data) #每個sample_cell名
 
 #[Each sample table] Row:criterion & Col:n_cells / percent
 overall_by_sample_long <- qc_df %>%
@@ -107,22 +111,24 @@ overall_by_sample_long <- qc_df %>%
     `Mito % > 12`         = sum(flag_hiMT),
     `Hemoglobin % > 10`   = sum(flag_hiHB),
     `Any of above`        = sum(flag_any),
-    total                 = n(),
+    total                 = n(), #樣本中的 cell 總數
     .groups = "drop"
   ) %>%
-  pivot_longer(cols = c(`UMI < 1000`:`Any of above`),
-               names_to = "criterion", values_to = "n_cells") %>%
-  mutate(percent = round(100 * n_cells / total, 3)) %>%
+  pivot_longer(cols = c(`UMI < 1000`:`Any of above`), #轉成長格式
+               names_to = "criterion", values_to = "cell_counts") %>%
+  mutate(percent = round(100 * cell_counts / total, 3)) %>%
   arrange(sample, match(criterion, c("UMI < 1000","UMI > 99th pct",
                                      "Features < 200","Features > 99th pct",
                                      "Mito % > 12","Hemoglobin % > 10",
                                      "Any of above"))) %>%
-  select(sample, criterion, n_cells, percent)
+  #arrange排序
+  select(sample, criterion, cell_counts, percent) #要保留的欄位
 
 #Print sample table
 invisible(lapply(split(overall_by_sample_long, overall_by_sample_long$sample), function(df) {
-  cat("\n=== Sample:", unique(df$sample), "===\n")
-  print(df[, c("criterion","n_cells","percent")], row.names = FALSE)
+  #按照 sample分割成一個 list，每個 list 元素是一個樣本的 dataframe
+  cat("\n=============== Sample:", unique(df$sample), "===============\n")
+  print(df[, c("criterion","cell_counts","percent")], row.names = FALSE)
 }))
 
 #----{Filter cell}
@@ -138,3 +144,61 @@ qc_count <- GetAssayData(data_filtered, assay = "RNA", slot = "counts")
 # Filter cell counts(Before vs After)
 cat("Before filtering:", ncol(data), "cells\n")
 cat("After filtering:", ncol(data_filtered), "cells\n")
+
+#----{存raw count matrix + metadata為.rds}
+counts_filtered   <- GetAssayData(data_filtered, assay = "RNA", slot = "counts")
+counts_filtered<- as(counts_filtered, "dgCMatrix")                      # 稀疏矩陣類型
+#dim(counts_filtered)
+metadata_filtered<-data_filtered@meta.data
+#dim(metadata_filtered)
+
+data_filtered_clean <- CreateSeuratObject(
+  counts       = counts_filtered,
+  meta.data    = metadata_filtered,
+  assay        = "RNA",
+  min.features = 0,  # 不因 features 太少丟 cell
+  min.cells    = 0, # 不因出現細胞數太少丟基因
+  project      = "NMOSD"
+)
+DefaultAssay(data_filtered_clean) <- "RNA"
+
+#驗證是否含counts
+Layers(data_filtered_clean[["RNA"]])   #counts
+dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:26135 x 193384
+
+# 讓 data layer = counts（關鍵一步）
+data_filtered_clean <-SetAssayData(
+  object   = data_filtered_clean,
+  assay    = "RNA",
+  layer    = "data",
+  new.data = GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
+)
+Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
+dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:26135 x 193384
+
+# RDS 格式
+saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata(seuratobject).rds")
+
+
+# h5ad 格式 (Scanpy/Python 用)
+library(Seurat)
+library(SeuratDisk)
+library(anndata)
+
+SaveH5Seurat(
+  data_filtered_clean,
+  filename  = "../scRNA_DATA/NMOSD_counts_metadata.h5Seurat",
+  overwrite = TRUE
+)
+
+Convert(
+  "../scRNA_DATA/NMOSD_counts_metadata.h5Seurat",
+  dest = "h5ad",
+  assay = "RNA",
+  overwrite = TRUE
+)
+
+
+# metadata CSV
+write.csv(data_filtered_clean@meta.data, "../scRNA_DATA/NMOSD_metadata_filtered.csv", row.names = TRUE)
+
