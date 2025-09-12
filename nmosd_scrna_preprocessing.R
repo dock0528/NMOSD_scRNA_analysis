@@ -14,7 +14,7 @@ cell_identities <- data.frame(
   Identity = as.character(data@active.ident)  # 細胞分類標籤
 )
 
-write.csv(cell_identities, file = "cell_identities.csv", row.names = FALSE)
+#write.csv(cell_identities, file = "cell_identities.csv", row.names = FALSE)
 #-----------------------------------------------------------------------------
 
 #E-GEAD-551
@@ -177,28 +177,39 @@ Layers(data_filtered_clean[["RNA"]]) #"counts" "data"
 dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:26135 x 193384
 
 # RDS 格式
-saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata(seuratobject).rds")
+saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata.rds")
 
 
-# h5ad 格式 (Scanpy/Python 用)
-library(Seurat)
-library(SeuratDisk)
-library(anndata)
+################{存成.mtx}##################
+library(Matrix)
 
-SaveH5Seurat(
-  data_filtered_clean,
-  filename  = "../scRNA_DATA/NMOSD_counts_metadata.h5Seurat",
-  overwrite = TRUE
+# 取 raw counts
+m <- GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
+
+# OUTPUT folder
+outdir <- "../scRNA_DATA/mtx_nmosd"
+dir.create(outdir, showWarnings = FALSE)
+
+#matrix.mtx
+Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix.mtx"))
+
+#features.tsv (基因名)
+write.table(
+  data.frame(rownames(m)),
+  file = file.path(outdir, "NMOSD_features.tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
 )
 
-Convert(
-  "../scRNA_DATA/NMOSD_counts_metadata.h5Seurat",
-  dest = "h5ad",
-  assay = "RNA",
-  overwrite = TRUE
+#barcodes.tsv (細胞ID)
+write.table(
+  data.frame(colnames(m)),
+  file = file.path(outdir, "NMOSD_barcodes.tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
 )
 
-
-# metadata CSV
-write.csv(data_filtered_clean@meta.data, "../scRNA_DATA/NMOSD_metadata_filtered.csv", row.names = TRUE)
+#metadata
+write.csv(
+  data_filtered_clean@meta.data,
+  file = file.path(outdir, "NMOSD_obs.csv")
+)
 
