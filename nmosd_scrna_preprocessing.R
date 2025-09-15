@@ -213,3 +213,137 @@ write.csv(
   file = file.path(outdir, "NMOSD_obs.csv")
 )
 
+####################【"原始matrix"畫mitochondrial & Hemoglobin genes】##################
+library(Seurat)
+library(ggplot2)
+library(reshape2)
+
+
+#----{nFeature RNA}
+p1 <- ggplot(qc_df, aes(x = sample, y = nFeature_RNA, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("nFeature_RNA") + xlab("")+
+  ggtitle("nFeature RNA")
+
+print(p1)
+
+
+# nCount_RNA
+p2 <- ggplot(qc_df, aes(x = sample, y = nCount_RNA, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("nCount_RNA") + xlab("")+
+  ggtitle("nCount RNA")
+
+print(p2)
+
+# percent.mt
+p3 <- ggplot(qc_df, aes(x = sample, y = percent.mt, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("percent.mt") + xlab("")+
+  ggtitle("Percentage of Mitochondrial genes")
+
+print(p3)
+
+# percent.hb
+p4 <- ggplot(qc_df, aes(x = sample, y = percent.hb, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("percent.hb") + xlab("")+
+  ggtitle("Percentage of Hemoglobin genes")
+
+print(p4)
+  
+####################【"過濾後matrix"畫mitochondrial & Hemoglobin genes】##################
+library(Seurat)
+library(ggplot2)
+library(reshape2)
+filtered_data=readRDS("../scRNA_DATA/NMOSD_count_metadata.rds")
+
+# ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
+#單位:%
+if (!"percent.mt" %in% colnames(filtered_data@meta.data)) {
+  filtered_data[["percent.mt"]] <- PercentageFeatureSet(filtered_data, pattern = "^MT-")
+}
+#----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
+#單位:%
+if (!"percent.hb" %in% colnames(filtered_data@meta.data)) {
+  filtered_data[["percent.hb"]] <- PercentageFeatureSet(filtered_data, pattern = "^HB[AB][12]")
+}    #^從字首匹配HB 、第3個字A or B、第4個字1 or 2
+
+
+#---{sample欄位}
+sample_col<-"orig.ident"
+
+#QC table
+qc_df_filtered <- data.frame(
+  sample       = filtered_data@meta.data[[sample_col]],
+  nCount_RNA   = filtered_data$nCount_RNA,
+  nFeature_RNA = filtered_data$nFeature_RNA,
+  percent.mt   = filtered_data$percent.mt,
+  percent.hb   = filtered_data$percent.hb,
+  row.names    = colnames(filtered_data)
+)
+
+#----{nFeature RNA}
+p1 <- ggplot(qc_df_filtered, aes(x = sample, y = nFeature_RNA, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("nFeature_RNA") + xlab("")+
+  ggtitle("nFeature RNA")
+
+print(p1)
+
+
+# nCount_RNA
+p2 <- ggplot(qc_df_filtered, aes(x = sample, y = nCount_RNA, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("nCount_RNA") + xlab("")+
+  ggtitle("nCount RNA")
+
+print(p2)
+
+# percent.mt
+p3 <- ggplot(qc_df_filtered, aes(x = sample, y = percent.mt, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("percent.mt") + xlab("")+
+  ggtitle("Percentage of Mitochondrial genes")
+
+print(p3)
+
+# percent.hb
+p4 <- ggplot(qc_df_filtered, aes(x = sample, y = percent.hb, fill = sample)) +
+  geom_violin(trim = FALSE) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16)) +
+  ylab("percent.hb") + xlab("")+
+  ggtitle("Percentage of Hemoglobin genes")
+
+print(p4)
