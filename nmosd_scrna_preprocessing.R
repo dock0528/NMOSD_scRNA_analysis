@@ -267,7 +267,7 @@ p4 <- ggplot(qc_df, aes(x = sample, y = percent.hb, fill = sample)) +
   ggtitle("Percentage of Hemoglobin genes")
 
 print(p4)
-  
+
 ####################【"過濾後matrix"畫mitochondrial & Hemoglobin genes】##################
 library(Seurat)
 library(ggplot2)
@@ -347,3 +347,88 @@ p4 <- ggplot(qc_df_filtered, aes(x = sample, y = percent.hb, fill = sample)) +
   ggtitle("Percentage of Hemoglobin genes")
 
 print(p4)
+
+#####################【處理gene一致的問題】#################
+filtered_data=readRDS("../scRNA_DATA/NMOSD_count_metadata.rds")
+
+
+# 取出 counts
+counts <- filtered_data@assays$RNA@layers$counts
+
+# 去掉版本號 (例如 AL627309.1 → AL627309)
+gene_ids <- rownames(filtered_data@assays$RNA)
+gene_ids_clean <- gsub("\\..*", "", gene_ids)
+gene_ids_clean <- as.factor(gene_ids_clean)
+
+# 合併同一基因的 counts（保持稀疏格式）
+#BiocManager::install("scran")
+library(scran)
+counts_clean <- sumCountsAcrossFeatures(counts, ids = gene_ids_clean)
+class(counts_clean)
+dim(counts_clean) #24092 X 193384
+counts_clean <- as(counts_clean, "dgCMatrix") #轉成"稀疏"矩陣
+
+# 取metadata
+metadata_filtered<-filtered_data@meta.data
+#dim(metadata_filtered)
+
+data_filtered_clean <- CreateSeuratObject(
+  counts       = counts_clean,
+  meta.data    = metadata_filtered,
+  assay        = "RNA",
+  min.features = 0,  # 不因 features 太少丟 cell
+  min.cells    = 0, # 不因出現細胞數太少丟基因
+  project      = "NMOSD"
+)
+DefaultAssay(data_filtered_clean) <- "RNA"
+
+#驗證是否含counts
+Layers(data_filtered_clean[["RNA"]])   #counts
+dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24092 x 193384
+
+# 讓 data layer = counts（關鍵一步）
+data_filtered_clean <-SetAssayData(
+  object   = data_filtered_clean,
+  assay    = "RNA",
+  layer    = "data",
+  new.data = GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
+)
+Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
+dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24092 x 193384
+
+# RDS 格式
+saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
+
+
+################{存成.mtx}##################
+library(Matrix)
+
+# 取 raw counts
+m <- GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
+
+# OUTPUT folder
+outdir <- "../scRNA_DATA/mtx_nmosd"
+dir.create(outdir, showWarnings = FALSE)
+
+#matrix.mtx
+Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix(gene unique).mtx"))
+
+#features.tsv (基因名)
+write.table(
+  data.frame(rownames(m)),
+  file = file.path(outdir, "NMOSD_features(gene unique).tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#barcodes.tsv (細胞ID)
+write.table(
+  data.frame(colnames(m)),
+  file = file.path(outdir, "NMOSD_barcodes(gene unique).tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#metadata
+write.csv(
+  data_filtered_clean@meta.data,
+  file = file.path(outdir, "NMOSD_obs(gene unique).csv")
+)
