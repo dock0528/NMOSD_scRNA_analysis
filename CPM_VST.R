@@ -64,3 +64,108 @@ plot_cpm_by_sample(
   barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv",
   output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD"
 )
+
+######################################【"VST" for each sample】############################################
+
+#載入套件
+library(Matrix)
+library(matrixStats)
+library(sctransform)
+library(tools)
+
+#----{讀檔}
+nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx")
+
+
+plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
+  
+  #create outout folder
+  if (!dir.exists(output_base_dir)) {
+    dir.create(output_base_dir, recursive = TRUE)
+  }
+  
+  # Read matrix.mtx
+  data <- readMM(mtx_file)
+  
+  # Read barcodes (cells)
+  barcodes <- read.delim(barcode_file, header = FALSE, stringsAsFactors = FALSE)[,1]
+  colnames(data) <- barcodes
+  
+  # Read genes
+  genes <- read.delim(gene_file, header = FALSE, stringsAsFactors = FALSE)[,1]
+  rownames(data) <- genes
+  
+  #取sample名 
+  sample_ids <- sub("_.*", "", barcodes)
+  
+  #每個sample分組計算 CPM
+  for (sample in unique(sample_ids)) {
+    cat("Processing sample:", sample, "\n")
+    
+    #取sample的data
+    idx <- which(sample_ids == sample)
+    sub_data <- data[, idx]
+  
+  
+  # 保留稀疏格式
+    sub_data <- as(sub_data, "CsparseMatrix")
+    data_filter <- sub_data[rowSums(sub_data) > 0, ] # dim(data_filter) 19589 x 4283
+  
+    #row count & log2計算
+    raw_mat <- as.matrix(data_filter)
+    log2_mat <- log2(raw_mat + 1)
+    
+    get_mean_sd <- function(mat) {
+      data.frame(mean = rowMeans(mat), sd = rowSds(mat))
+    }
+    df_raw <- get_mean_sd(raw_mat)
+    df_log <- get_mean_sd(log2_mat)
+    
+    # 輸出圖檔
+    output_file <- file.path(output_base_dir, paste0(sample, "_VST_plot.png"))
+    png(output_file, width = 1200, height = 600, res = 150)
+    par(mfrow = c(1, 3), oma = c(2, 2, 5, 2))
+    
+    plot(df_raw$mean, df_raw$sd,
+         pch = 20, col = "#00000033",
+         main = "Raw counts",
+         xlab = "Mean", ylab = "SD",
+         xlim = c(0, 20), ylim = c(0, 100))
+    
+    plot(df_log$mean, df_log$sd,
+         pch = 20, col = "#1f78b433",
+         main = "log2(count + 1)",
+         xlab = "Mean", ylab = "SD",
+         xlim = c(0, 20), ylim = c(0, 100))
+    
+    vst_out <- sctransform::vst(data_filter, latent_var = c("log_umi"), return_gene_attr = TRUE, 
+                                return_cell_attr = TRUE, verbosity = 1)
+    
+    gene_info <- vst_out$gene_attr #去vst後的資料
+    
+    gene_info$mean<-gene_info$amean #取每個gene的平均
+    gene_info$sd<-sqrt(gene_info$residual_variance)
+    
+    
+    #聚焦在0-20的Mean
+    plot(gene_info$mean, gene_info$sd,
+         pch = 20, col = "#e31a1c33",
+         main = "VST",
+         xlab = "Mean", ylab = "SD",
+         xlim = c(0, 20),
+         ylim=c(0,100))
+    
+    mtext(sample,
+          outer = TRUE, line = 1.5, cex = 1.2, font = 2)
+    
+    dev.off()
+  }
+}
+
+# 批次處理
+plot_vst_comparison(
+  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx",
+  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv",
+  gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features.tsv",
+  output_base_dir = "../scRNA_DATA/plot_VST_NMOSD"
+)
