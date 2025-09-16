@@ -76,7 +76,7 @@ library(tools)
 #----{讀檔}
 nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx")
 
-
+#----{畫圖}
 plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
   
   #create outout folder
