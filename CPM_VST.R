@@ -79,7 +79,7 @@ nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx")
 #----{畫圖}
 plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
   
-  #create outout folder
+  #create output folder
   if (!dir.exists(output_base_dir)) {
     dir.create(output_base_dir, recursive = TRUE)
   }
@@ -98,7 +98,7 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
   #取sample名 
   sample_ids <- sub("_.*", "", barcodes)
   
-  #每個sample分組計算 CPM
+  #每個sample分組計算VST
   for (sample in unique(sample_ids)) {
     cat("Processing sample:", sample, "\n")
     
@@ -106,10 +106,9 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
     idx <- which(sample_ids == sample)
     sub_data <- data[, idx]
   
-  
-  # 保留稀疏格式
-    sub_data <- as(sub_data, "CsparseMatrix")
-    data_filter <- sub_data[rowSums(sub_data) > 0, ] # dim(data_filter) 19589 x 4283
+    #VST要確保gene在cell的raw count>0
+    sub_data <- as(sub_data, "CsparseMatrix") #確保稀疏格式
+    data_filter <- sub_data[rowSums(sub_data) > 0, ] 
   
     #row count & log2計算
     raw_mat <- as.matrix(data_filter)
@@ -141,7 +140,11 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
     vst_out <- sctransform::vst(data_filter, latent_var = c("log_umi"), return_gene_attr = TRUE, 
                                 return_cell_attr = TRUE, verbosity = 1)
     
-    gene_info <- vst_out$gene_attr #去vst後的資料
+    #latent_var = c("log_umi"):每個 cell 的 UMI 總數取log ->模型考慮細胞的log UMI 數來校正定序深度差異
+    #return_gene_attr = TRUE:輸出基因層級的統計資訊
+    #verbosity = 1:控制訊息輸出，1 表示會顯示基本的運行過程
+    
+    gene_info <- vst_out$gene_attr #取vst後的資料
     
     gene_info$mean<-gene_info$amean #取每個gene的平均
     gene_info$sd<-sqrt(gene_info$residual_variance)
@@ -162,7 +165,7 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
   }
 }
 
-# 批次處理
+#----{執行輸出VST圖}
 plot_vst_comparison(
   mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx",
   barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv",
