@@ -356,17 +356,23 @@ filtered_data=readRDS("../scRNA_DATA/NMOSD_count_metadata.rds")
 counts <- filtered_data@assays$RNA@layers$counts
 
 # 去掉版本號 (例如 AL627309.1 → AL627309)
-gene_ids <- rownames(filtered_data@assays$RNA)
+gene_ids <- rownames(filtered_data@assays$RNA) #length(gene_ids):26135
 gene_ids_clean <- gsub("\\..*", "", gene_ids)
 gene_ids_clean <- as.factor(gene_ids_clean)
 
 # 合併同一基因的 counts（保持稀疏格式）
 #BiocManager::install("scran")
 library(scran)
-counts_clean <- sumCountsAcrossFeatures(counts, ids = gene_ids_clean)
+counts_clean <- sumCountsAcrossFeatures(counts, ids =gene_ids_clean )
 class(counts_clean)
 dim(counts_clean) #24092 X 193384
+
+#加回gene & cell名
+rownames(counts_clean) <- unique(gene_ids_clean)   
+colnames(counts_clean) <- colnames(filtered_data)
+
 counts_clean <- as(counts_clean, "dgCMatrix") #轉成"稀疏"矩陣
+class(counts_clean)
 
 # 取metadata
 metadata_filtered<-filtered_data@meta.data
@@ -411,7 +417,7 @@ outdir <- "../scRNA_DATA/mtx_nmosd"
 dir.create(outdir, showWarnings = FALSE)
 
 #matrix.mtx
-Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix(gene unique).mtx"))
+Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix(gene unique).mtx")) #回傳NULL代表有成功
 
 #features.tsv (基因名)
 write.table(

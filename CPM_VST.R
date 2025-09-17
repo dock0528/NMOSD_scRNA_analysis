@@ -3,14 +3,14 @@ library(Matrix)
 library(tools)
 
 #----{讀檔}
-nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx")
-genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features.tsv", header = FALSE, stringsAsFactors = FALSE) #delim讀tab分隔
-cells <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv", header = FALSE, stringsAsFactors = FALSE) #stringsAsFactors文字轉向量
+nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx")
+genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE) #delim讀tab分隔
+cells <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE) #stringsAsFactors文字轉向量
 
 rownames(nmosd_matrix) <- genes$V1   
 colnames(nmosd_matrix) <- cells$V1  
 
-dim(nmosd_matrix)   # gene × cell : 26135 x 193384
+dim(nmosd_matrix)   # gene × cell : 24092 x 193384
 
 #----{畫圖}
 plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD") {
@@ -60,8 +60,8 @@ plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scR
 
 #----{執行輸出CPM圖}
 plot_cpm_by_sample(
-  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx",
-  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv",
+  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx",
+  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv",
   output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD"
 )
 
