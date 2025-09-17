@@ -74,7 +74,7 @@ library(sctransform)
 library(tools)
 
 #----{讀檔}
-nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx")
+nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx")
 
 #----{畫圖}
 plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
@@ -167,8 +167,8 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
 
 #----{執行輸出VST圖}
 plot_vst_comparison(
-  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix.mtx",
-  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes.tsv",
-  gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features.tsv",
+  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx",
+  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv",
+  gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv",
   output_base_dir = "../scRNA_DATA/plot_VST_NMOSD"
 )
