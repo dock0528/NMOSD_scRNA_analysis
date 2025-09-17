@@ -386,7 +386,7 @@ DefaultAssay(data_filtered_clean) <- "RNA"
 Layers(data_filtered_clean[["RNA"]])   #counts
 dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24092 x 193384
 
-# 讓 data layer = counts（關鍵一步）
+# 讓 data layer = counts（重要!!!)
 data_filtered_clean <-SetAssayData(
   object   = data_filtered_clean,
   assay    = "RNA",
@@ -396,17 +396,17 @@ data_filtered_clean <-SetAssayData(
 Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
 dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24092 x 193384
 
-# RDS 格式
+# ----{存成RDS 格式}
 saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
 
 
-################{存成.mtx}##################
+#----------------{存成.mtx}----------------
 library(Matrix)
 
 # 取 raw counts
 m <- GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
 
-# OUTPUT folder
+# output folder
 outdir <- "../scRNA_DATA/mtx_nmosd"
 dir.create(outdir, showWarnings = FALSE)
 
@@ -432,3 +432,8 @@ write.csv(
   data_filtered_clean@meta.data,
   file = file.path(outdir, "NMOSD_obs(gene unique).csv")
 )
+#-------------------------------------------
+#----{確認是否有重複的Hugo Symbol}
+nmosd_data<-readRDS("../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
+#View(nmosd_data)
+anyDuplicated(rownames(nmosd_data@assays$RNA@features)) #0
