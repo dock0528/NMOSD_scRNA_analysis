@@ -172,3 +172,8 @@ plot_vst_comparison(
   gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv",
   output_base_dir = "../scRNA_DATA/plot_VST_NMOSD"
 )
+
+#########################【IFN-I DEGs in scRNA DATA】#########################
+IFN_I_DEGs<-c('ISG15','IFI6','CMPK2','LY6E','OASL','AKAP12','TNFRSF13C')
+genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE)$V1
+IFN_I_DEGs %in% genes #皆為TRUE
