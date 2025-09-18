@@ -443,3 +443,34 @@ write.csv(
 nmosd_data<-readRDS("../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
 #View(nmosd_data)
 anyDuplicated(rownames(nmosd_data@assays$RNA@features)) #0
+
+########################【篩protein coding gene】########################
+Raw_count_merged<-read.csv('./RNA_DATA/Raw_count_merged_matrix.csv',row.names = 1,header=T) #dim(Raw_count_merged):78724 x 21
+
+#Raw count 
+count_df<-as.matrix(Raw_count_merged)
+rownames(count_df)<-gsub("\\.\\d+$", "",rownames(count_df)) #去除小數點以後的值
+
+#----連到Ensembl
+library(biomaRt)
+ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+
+#----My gene matrix
+All_genes<-rownames(count_df)
+
+
+#----抓註解
+annot <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+  filters    = "ensembl_gene_id",
+  values     = All_genes,
+  mart       = ensembl
+)
+
+#----篩 protein coding genes
+protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #20091個
+my_protein_coding_genes<-protein_coding_genes$ensembl_gene_id
+#write.csv(my_protein_coding_genes,file='./RNA_DATA/My_protein_coding_genes.csv',row.names = FALSE)
+
+#----proteing coding df
+protein_coding_count_df<-count_df[rownames(count_df) %in% protein_coding_genes$ensembl_gene_id,]
