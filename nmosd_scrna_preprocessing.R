@@ -445,6 +445,36 @@ nmosd_data<-readRDS("../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
 anyDuplicated(rownames(nmosd_data@assays$RNA@features)) #0
 
 ########################【篩protein coding gene】########################
+#!!!還要處理
+library(clusterProfiler)
+gene_list<-rownames(data@assays$RNA@meta.features) #length(gene_list):26135
+gene_df<-bitr(gene_list,fromType = 'SYMBOL',toType=c('ENTREZID','ENSEMBL'),OrgDb='org.Hs.eg.db')
+
+#BiocManager::install("GenomicFeatures")
+#BiocManager::install("txdbmaker")
+library(GenomicFeatures)
+library(rtracklayer)
+
+# 匯入 GTF
+gtf <- import("../scRNA_DATA/gencode.v43.chr_patch_hapl_scaff.annotation.gtf")
+
+# 建立 mapping 表 (Ensembl ID, Symbol, Gene type)
+gene_map <- unique(mcols(gtf)[, c("gene_id", "gene_name", "gene_type")])
+
+# 查詢 AL627309.1
+subset(gene_map, gene_name == "AL627309.1")
+
+
+
+
+
+
+
+
+
+
+
+
 Raw_count_merged<-read.csv('./RNA_DATA/Raw_count_merged_matrix.csv',row.names = 1,header=T) #dim(Raw_count_merged):78724 x 21
 
 #Raw count 
