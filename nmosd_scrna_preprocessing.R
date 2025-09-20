@@ -7,6 +7,12 @@ head(data@assays$RNA@counts)
 
 colnames(data@meta.data)
 head(data@meta.data)
+
+###################【取gene名，轉成Ensembl GENE ID】##################
+hugo_genes <- rownames(data@assays$RNA@meta.features)
+#write.table(hugo_genes, file = "../scRNA_DATA/HUGO_gene_list.csv", row.names = FALSE, col.names = FALSE, sep = ",", quote = FALSE)
+
+
 ########################【active.ident】################################
 # 轉換為 DataFrame
 cell_identities <- data.frame(
