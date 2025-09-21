@@ -13,6 +13,7 @@ hugo_genes <- rownames(data@assays$RNA@meta.features)
 #write.table(hugo_genes, file = "../scRNA_DATA/HUGO_gene_list.csv", row.names = FALSE, col.names = FALSE, sep = ",", quote = FALSE)
 
 
+
 ########################【active.ident】################################
 # 轉換為 DataFrame
 cell_identities <- data.frame(
@@ -354,127 +355,7 @@ p4 <- ggplot(qc_df_filtered, aes(x = sample, y = percent.hb, fill = sample)) +
 
 print(p4)
 
-#####################【處理gene一致的問題】#################
-filtered_data=readRDS("../scRNA_DATA/NMOSD_count_metadata.rds")
-
-
-# 取出 counts
-counts <- filtered_data@assays$RNA@layers$counts
-
-# 去掉版本號 (例如 AL627309.1 → AL627309)
-gene_ids <- rownames(filtered_data@assays$RNA) #length(gene_ids):26135
-gene_ids_clean <- gsub("\\..*", "", gene_ids)
-gene_ids_clean <- as.factor(gene_ids_clean)
-
-# 合併同一基因的 counts（保持稀疏格式）
-#BiocManager::install("scran")
-library(scran)
-counts_clean <- sumCountsAcrossFeatures(counts, ids =gene_ids_clean )
-class(counts_clean)
-dim(counts_clean) #24092 X 193384
-
-#加回gene & cell名
-rownames(counts_clean) <- unique(gene_ids_clean)   
-colnames(counts_clean) <- colnames(filtered_data)
-
-counts_clean <- as(counts_clean, "dgCMatrix") #轉成"稀疏"矩陣
-class(counts_clean)
-
-# 取metadata
-metadata_filtered<-filtered_data@meta.data
-#dim(metadata_filtered)
-
-data_filtered_clean <- CreateSeuratObject(
-  counts       = counts_clean,
-  meta.data    = metadata_filtered,
-  assay        = "RNA",
-  min.features = 0,  # 不因 features 太少丟 cell
-  min.cells    = 0, # 不因出現細胞數太少丟基因
-  project      = "NMOSD"
-)
-DefaultAssay(data_filtered_clean) <- "RNA"
-
-#驗證是否含counts
-Layers(data_filtered_clean[["RNA"]])   #counts
-dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24092 x 193384
-
-# 讓 data layer = counts（重要!!!)
-data_filtered_clean <-SetAssayData(
-  object   = data_filtered_clean,
-  assay    = "RNA",
-  layer    = "data",
-  new.data = GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
-)
-Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
-dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24092 x 193384
-
-# ----{存成RDS 格式}
-saveRDS(data_filtered_clean , "../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
-
-
-#----------------{存成.mtx}----------------
-library(Matrix)
-
-# 取 raw counts
-m <- GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
-
-# output folder
-outdir <- "../scRNA_DATA/mtx_nmosd"
-dir.create(outdir, showWarnings = FALSE)
-
-#matrix.mtx
-Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix(gene unique).mtx")) #回傳NULL代表有成功
-
-#features.tsv (基因名)
-write.table(
-  data.frame(rownames(m)),
-  file = file.path(outdir, "NMOSD_features(gene unique).tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#barcodes.tsv (細胞ID)
-write.table(
-  data.frame(colnames(m)),
-  file = file.path(outdir, "NMOSD_barcodes(gene unique).tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#metadata
-write.csv(
-  data_filtered_clean@meta.data,
-  file = file.path(outdir, "NMOSD_obs(gene unique).csv")
-)
-#-------------------------------------------
-
-
-########################【重複的hugo symbol篩protein coding gene】########################
-library(clusterProfiler)
-HUGO_gene_dup_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(duplicated).csv') #106個重複
-HUGO_gene_dup_list$ENSG <- sub("\\..*", "", HUGO_gene_dup_list$ENSG)
-
-#----連到Ensembl
-library(biomaRt)
-ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
-
-#----抓註解
-annot <- getBM(
-  attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
-  filters    = "ensembl_gene_id",
-  values     = HUGO_gene_dup_list$ENSG,
-  mart       = ensembl
-)
-
-#----篩 protein coding genes
-protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #42個
-
-#----重複的hugo symbol
-dup_hugo <- protein_coding_genes[
-  duplicated(protein_coding_genes$external_gene_name) | 
-    duplicated(protein_coding_genes$external_gene_name, fromLast = TRUE),  #顯示所有
-]
-dup_hugo #2個hugo(4個ensg)
-
-################【消失的ENSG】##############
+###################【消失的ENSG篩protein coding gene】##############
 library(clusterProfiler)
 HUGO_gene_missed_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG).csv') #9個
 HUGO_gene_missed_list$HugoSymbol<- sub("\\..*", "", HUGO_gene_missed_list$HugoSymbol) #去小數點
@@ -500,13 +381,17 @@ merged_df <- merge(
   all.x = TRUE
 )
 merged_df <- subset(merged_df, select = -ENSG)
+merged_df  <- subset(
+  merged_df ,
+  !(HugoSymbol %in% c("LINC01238"))
+) #protein coding genes:16509個
 merged_df$HugoSymbol <- paste0(merged_df$HugoSymbol, ".1") #加回原本.1
 print(merged_df)
 #write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG)(protein coding).csv',row.names =F)
 
 ########################【未消失ENSG的hugo symbol篩protein coding gene】########################
 library(clusterProfiler)
-HUGO_gene_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG).csv') #26179個重複
+HUGO_gene_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG).csv') #26179個
 HUGO_gene_list$ENSG <- sub("\\..*", "", HUGO_gene_list$ENSG)
 
 #----連到Ensembl
@@ -545,8 +430,112 @@ merged_df <- merge(
   by.y = "ENSG", 
   all.x = TRUE
 )
-merged_df <- subset(merged_df, select = -external_gene_name) #16526
-dedup_merge_df <- merged_df[!duplicated(merged_df$HugoSymbol), ] #16502
-
+merged_df <- subset(merged_df, select = -external_gene_name) #16526(其中包含24個hugo重複)
+dedup_merge_df <- merged_df[!duplicated(merged_df$HugoSymbol), ] #16502 去重複，若有重複保留第一個出現
 
 #write.csv(dedup_merge_df,'../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv',row.names = F)
+
+######################【2個protein coding df合併】################
+protein_coding_df1<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG)(protein coding).csv") #8
+protein_coding_df2<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv") #16502
+
+# 確保欄位順序相同
+col_order <- c("HugoSymbol", "ensembl_gene_id", "gene_biotype")
+protein_coding_df1 <- protein_coding_df1[, col_order]
+protein_coding_df2 <- protein_coding_df2[, col_order]
+
+# 合併
+merged_df <- rbind(protein_coding_df1, protein_coding_df2)
+
+# 移除 gene_biotype 欄位
+merged_df <- merged_df[, c("HugoSymbol", "ensembl_gene_id")]
+
+head(merged_df) 
+#write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv',row.names = F) #16510
+
+
+#####################【protein coding matrix】#################
+filtered_data=readRDS("../scRNA_DATA/NMOSD_count_metadata.rds")
+
+# 取出 counts
+counts <- filtered_data@assays$RNA@layers$counts
+
+#加回gene & cell名
+gene_ids <- rownames(filtered_data@assays$RNA)
+rownames(counts) <- gene_ids   
+colnames(counts) <- colnames(filtered_data)
+
+#取protein coding gene
+protein_coding_gene_list<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv")$HugoSymbol #16510
+keep_genes <- rownames(counts) %in% protein_coding_gene_list
+counts_pc <- counts[keep_genes, ]
+#dim(counts_pc) 16510x193384
+
+# 取metadata
+metadata_filtered<-filtered_data@meta.data
+#dim(metadata_filtered)
+
+data_pc <- CreateSeuratObject(
+  counts       = counts_pc,
+  meta.data    = metadata_filtered,
+  assay        = "RNA",
+  min.features = 0,  # 不因 features 太少丟 cell
+  min.cells    = 0, # 不因出現細胞數太少丟基因
+  project      = "NMOSD"
+)
+DefaultAssay(data_pc) <- "RNA"
+
+#驗證是否含counts
+Layers(data_pc[["RNA"]])   #counts
+dim(GetAssayData(data_pc, layer = "counts"))   # genes x cells:16510 x 193384
+
+# 讓 data layer = counts（重要!!!)
+data_pc <-SetAssayData(
+  object   = data_pc,
+  assay    = "RNA",
+  layer    = "data",
+  new.data = GetAssayData(data_pc, assay = "RNA", layer = "counts")
+)
+Layers(data_pc[["RNA"]]) #"counts" "data" 
+dim(GetAssayData(data_pc, layer="data"))  # genes x cells:16510 x 193384
+
+# ----{存成RDS 格式}
+saveRDS(data_pc , "../scRNA_DATA/NMOSD_count_metadata(protein coding).rds")
+
+
+#----------------{存成.mtx}----------------
+library(Matrix)
+
+# 取 raw counts
+m <- GetAssayData(data_pc, assay = "RNA", layer = "counts")
+
+# output folder
+outdir <- "../scRNA_DATA/mtx_nmosd"
+dir.create(outdir, showWarnings = FALSE)
+
+#matrix.mtx
+Matrix::writeMM(m, file.path(outdir, "NMOSD_matrix(protein coding).mtx")) #回傳NULL代表有成功
+
+#features.tsv (基因名)
+write.table(
+  data.frame(rownames(m)),
+  file = file.path(outdir, "NMOSD_features(protein coding).tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#barcodes.tsv (細胞ID)
+write.table(
+  data.frame(colnames(m)),
+  file = file.path(outdir, "NMOSD_barcodes(protein coding).tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#metadata
+write.csv(
+  data_pc@meta.data,
+  file = file.path(outdir, "NMOSD_obs(protein coding).csv")
+)
+#-------------------------------------------
+
+
+
