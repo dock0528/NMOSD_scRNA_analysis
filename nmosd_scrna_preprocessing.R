@@ -445,68 +445,108 @@ write.csv(
   file = file.path(outdir, "NMOSD_obs(gene unique).csv")
 )
 #-------------------------------------------
-#----{確認是否有重複的Hugo Symbol}
-nmosd_data<-readRDS("../scRNA_DATA/NMOSD_count_metadata(gene unique).rds")
-#View(nmosd_data)
-anyDuplicated(rownames(nmosd_data@assays$RNA@features)) #0
 
-########################【篩protein coding gene】########################
-#!!!還要處理
+
+########################【重複的hugo symbol篩protein coding gene】########################
 library(clusterProfiler)
-gene_list<-rownames(data@assays$RNA@meta.features) #length(gene_list):26135
-gene_df<-bitr(gene_list,fromType = 'SYMBOL',toType=c('ENTREZID','ENSEMBL'),OrgDb='org.Hs.eg.db')
-
-#BiocManager::install("GenomicFeatures")
-#BiocManager::install("txdbmaker")
-library(GenomicFeatures)
-library(rtracklayer)
-
-# 匯入 GTF
-gtf <- import("../scRNA_DATA/gencode.v43.chr_patch_hapl_scaff.annotation.gtf")
-
-# 建立 mapping 表 (Ensembl ID, Symbol, Gene type)
-gene_map <- unique(mcols(gtf)[, c("gene_id", "gene_name", "gene_type")])
-
-# 查詢 AL627309.1
-subset(gene_map, gene_name == "AL627309.1")
-
-
-
-
-
-
-
-
-
-
-
-
-Raw_count_merged<-read.csv('./RNA_DATA/Raw_count_merged_matrix.csv',row.names = 1,header=T) #dim(Raw_count_merged):78724 x 21
-
-#Raw count 
-count_df<-as.matrix(Raw_count_merged)
-rownames(count_df)<-gsub("\\.\\d+$", "",rownames(count_df)) #去除小數點以後的值
+HUGO_gene_dup_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(duplicated).csv') #106個重複
+HUGO_gene_dup_list$ENSG <- sub("\\..*", "", HUGO_gene_dup_list$ENSG)
 
 #----連到Ensembl
 library(biomaRt)
 ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
 
-#----My gene matrix
-All_genes<-rownames(count_df)
+#----抓註解
+annot <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+  filters    = "ensembl_gene_id",
+  values     = HUGO_gene_dup_list$ENSG,
+  mart       = ensembl
+)
 
+#----篩 protein coding genes
+protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #42個
+
+#----重複的hugo symbol
+dup_hugo <- protein_coding_genes[
+  duplicated(protein_coding_genes$external_gene_name) | 
+    duplicated(protein_coding_genes$external_gene_name, fromLast = TRUE),  #顯示所有
+]
+dup_hugo #2個hugo(4個ensg)
+
+################【消失的ENSG】##############
+library(clusterProfiler)
+HUGO_gene_missed_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG).csv') #9個
+HUGO_gene_missed_list$HugoSymbol<- sub("\\..*", "", HUGO_gene_missed_list$HugoSymbol) #去小數點
+
+#----抓註解
+annot <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+  filters    = "external_gene_name",
+  values     = HUGO_gene_missed_list$HugoSymbol,
+  mart       = ensembl
+)
+
+#----篩 protein coding genes
+protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #8個 ->"LINC01238"不是protein coding gene
+protein_coding_genes
+
+#補回ENSG
+merged_df <- merge(
+  HUGO_gene_missed_list, 
+  protein_coding_genes, 
+  by.x = "HugoSymbol", 
+  by.y = "external_gene_name", 
+  all.x = TRUE
+)
+merged_df <- subset(merged_df, select = -ENSG)
+merged_df$HugoSymbol <- paste0(merged_df$HugoSymbol, ".1") #加回原本.1
+print(merged_df)
+#write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG)(protein coding).csv',row.names =F)
+
+########################【未消失ENSG的hugo symbol篩protein coding gene】########################
+library(clusterProfiler)
+HUGO_gene_list<-read.csv('../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG).csv') #26179個重複
+HUGO_gene_list$ENSG <- sub("\\..*", "", HUGO_gene_list$ENSG)
+
+#----連到Ensembl
+library(biomaRt)
+ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
 
 #----抓註解
 annot <- getBM(
   attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
   filters    = "ensembl_gene_id",
-  values     = All_genes,
+  values     = HUGO_gene_list$ENSG,
   mart       = ensembl
 )
 
 #----篩 protein coding genes
-protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #20091個
-my_protein_coding_genes<-protein_coding_genes$ensembl_gene_id
-#write.csv(my_protein_coding_genes,file='./RNA_DATA/My_protein_coding_genes.csv',row.names = FALSE)
+protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #16511個
 
-#----proteing coding df
-protein_coding_count_df<-count_df[rownames(count_df) %in% protein_coding_genes$ensembl_gene_id,]
+#----重複的hugo symbol
+dup_hugo <- protein_coding_genes[
+  duplicated(protein_coding_genes$external_gene_name) | 
+    duplicated(protein_coding_genes$external_gene_name, fromLast = TRUE),  #顯示所有
+]
+dup_hugo 
+subset(dup_hugo, !external_gene_name=="") #2個hugo(4個ensg)
+
+dedup_protein_coding_genes <- subset(
+  protein_coding_genes,
+  !(ensembl_gene_id %in% c("ENSG00000254093", "ENSG00000258724"))
+) #protein coding genes:16509個
+
+
+merged_df <- merge(
+  dedup_protein_coding_genes, 
+  HUGO_gene_list, 
+  by.x = "ensembl_gene_id", 
+  by.y = "ENSG", 
+  all.x = TRUE
+)
+merged_df <- subset(merged_df, select = -external_gene_name) #16526
+dedup_merge_df <- merged_df[!duplicated(merged_df$HugoSymbol), ] #16502
+
+
+#write.csv(dedup_merge_df,'../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv',row.names = F)
