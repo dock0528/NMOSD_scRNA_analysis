@@ -419,7 +419,7 @@ subset(dup_hugo, !external_gene_name=="") #2個hugo(4個ensg)
 
 dedup_protein_coding_genes <- subset(
   protein_coding_genes,
-  !(ensembl_gene_id %in% c("ENSG00000254093", "ENSG00000258724"))
+  !(ensembl_gene_id %in% c("ENSG00000285437", "ENSG00000258724"))
 ) #protein coding genes:16509個
 
 
@@ -431,13 +431,13 @@ merged_df <- merge(
   all.x = TRUE
 )
 merged_df <- subset(merged_df, select = -external_gene_name) #16526(其中包含24個hugo重複)
-dedup_merge_df <- merged_df[!duplicated(merged_df$HugoSymbol), ] #16502 去重複，若有重複保留第一個出現
+dedup_merge_df <- merged_df[!duplicated(merged_df$HugoSymbol), ] #16503 去重複，若有重複保留第一個出現
 
 #write.csv(dedup_merge_df,'../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv',row.names = F)
 
 ######################【2個protein coding df合併】################
 protein_coding_df1<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(missing_ENSG)(protein coding).csv") #8
-protein_coding_df2<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv") #16502
+protein_coding_df2<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(no_missing_ENSG)(protein coding).csv") #16503
 
 # 確保欄位順序相同
 col_order <- c("HugoSymbol", "ensembl_gene_id", "gene_biotype")
@@ -451,7 +451,7 @@ merged_df <- rbind(protein_coding_df1, protein_coding_df2)
 merged_df <- merged_df[, c("HugoSymbol", "ensembl_gene_id")]
 
 head(merged_df) 
-#write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv',row.names = F) #16510
+#write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv',row.names = F) #16511
 
 
 #####################【protein coding matrix】#################
@@ -466,10 +466,10 @@ rownames(counts) <- gene_ids
 colnames(counts) <- colnames(filtered_data)
 
 #取protein coding gene
-protein_coding_gene_list<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv")$HugoSymbol #16510
+protein_coding_gene_list<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv")$HugoSymbol #16511
 keep_genes <- rownames(counts) %in% protein_coding_gene_list
 counts_pc <- counts[keep_genes, ]
-#dim(counts_pc) 16510x193384
+#dim(counts_pc) 16511x193384
 
 # 取metadata
 metadata_filtered<-filtered_data@meta.data
@@ -497,7 +497,7 @@ data_pc <-SetAssayData(
   new.data = GetAssayData(data_pc, assay = "RNA", layer = "counts")
 )
 Layers(data_pc[["RNA"]]) #"counts" "data" 
-dim(GetAssayData(data_pc, layer="data"))  # genes x cells:16510 x 193384
+dim(GetAssayData(data_pc, layer="data"))  # genes x cells:16511 x 193384
 
 # ----{存成RDS 格式}
 saveRDS(data_pc , "../scRNA_DATA/NMOSD_count_metadata(protein coding).rds")

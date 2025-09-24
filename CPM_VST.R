@@ -3,9 +3,9 @@ library(Matrix)
 library(tools)
 
 #----{讀檔}
-nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx")
-genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE) #delim讀tab分隔
-cells <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE) #stringsAsFactors文字轉向量
+nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx")
+genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(protein coding).tsv", header = FALSE, stringsAsFactors = FALSE) #delim讀tab分隔
+cells <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(protein coding).tsv", header = FALSE, stringsAsFactors = FALSE) #stringsAsFactors文字轉向量
 
 rownames(nmosd_matrix) <- genes$V1   
 colnames(nmosd_matrix) <- cells$V1  
@@ -13,7 +13,7 @@ colnames(nmosd_matrix) <- cells$V1
 dim(nmosd_matrix)   # gene × cell : 24092 x 193384
 
 #----{畫圖}
-plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD") {
+plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD(protein coding)") {
   
   #create outout folder
   if (!dir.exists(output_base_dir)) {
@@ -60,9 +60,9 @@ plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scR
 
 #----{執行輸出CPM圖}
 plot_cpm_by_sample(
-  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx",
-  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv",
-  output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD"
+  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx",
+  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(protein coding).tsv",
+  output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD(protein coding)"
 )
 
 ######################################【"VST" for each sample】############################################
@@ -74,7 +74,7 @@ library(sctransform)
 library(tools)
 
 #----{讀檔}
-nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx")
+nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx")
 
 #----{畫圖}
 plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
@@ -167,13 +167,13 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
 
 #----{執行輸出VST圖}
 plot_vst_comparison(
-  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(gene unique).mtx",
-  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(gene unique).tsv",
-  gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv",
-  output_base_dir = "../scRNA_DATA/plot_VST_NMOSD"
+  mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx",
+  barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(protein coding).tsv",
+  gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features(protein coding).tsv",
+  output_base_dir = "../scRNA_DATA/plot_VST_NMOSD(protein coding)"
 )
 
 #########################【IFN-I DEGs in scRNA DATA】#########################
 IFN_I_DEGs<-c('ISG15','IFI6','CMPK2','LY6E','OASL','AKAP12','TNFRSF13C')
-genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(gene unique).tsv", header = FALSE, stringsAsFactors = FALSE)$V1
+genes <- read.delim("../scRNA_DATA/mtx_nmosd/NMOSD_features(protein coding).tsv", header = FALSE, stringsAsFactors = FALSE)$V1
 IFN_I_DEGs %in% genes #皆為TRUE
