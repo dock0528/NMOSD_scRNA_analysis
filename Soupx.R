@@ -9,7 +9,7 @@ library(DropletUtils)
 ids <- list.dirs("../SoupX_cellranger_results_merged_v2", recursive = FALSE, full.names = FALSE) 
 #recursive = FALSE:僅列出第一層資料夾 #full.names = FALSE:僅列出資料夾名稱(不要完整路徑)
 base_dir <- "../SoupX_cellranger_results_merged_v2"   # 你的母資料夾
-ids<-"Control2"
+ids <-"Control2"
 for (id in ids) {
   message("Soupx正在處理:", id, " ...")
   
@@ -31,8 +31,8 @@ for (id in ids) {
 ##################################【所有sample合併】##################################
 library(Seurat)
 
-ids <- list.dirs("../SoupX_cellranger_results_merged_v2", recursive = FALSE, full.names = FALSE) 
-base_dir <- "../SoupX_cellranger_results_merged_v2"
+ids <- list.dirs("../SoupX_results", recursive = FALSE, full.names = FALSE) 
+base_dir <- "../SoupX_results"
 
 seurat_list <- list()
 
@@ -53,51 +53,47 @@ for (id in ids) {
 # 合併
 merged <- Reduce(function(x, y) merge(x, y), seurat_list) #Reduce()對所有seurat_list做merge
 
-# 取出所sample matrix(原本放在RNA@layers)
-layers <- merged[["RNA"]]@layers  
+#合併多層layers(保留 cell names)
+merged <- JoinLayers(merged, assay = "RNA")
 
-# 把所有 counts 矩陣合併
-all_counts <- do.call(cbind, layers)
-
-# 建立一個新的 Seurat 物件，確保只有一個 counts matrix
-merged_seurat <- CreateSeuratObject(all_counts, project = "control_merged")
 
 # 存成 RDS
-saveRDS(merged_seurat , "../scRNA_DATA_control_raw/Control_merged_soupx.rds")
+saveRDS(merged , "../scRNA_DATA_3control/Control_merged_SoupX_3samples.rds")
+
 
 ##################################【讀入Control_merged_soupx.rds】##################################
 library(SeuratObject)
 library(Seurat)
 library(Matrix)
-control_data=readRDS("../scRNA_DATA_control_raw/Control_merged_soupx.rds")
+control_data=readRDS("../scRNA_DATA_3control/Control_merged_SoupX_3samples.rds")
 
 
 # 取 raw counts
 m <- GetAssayData(control_data, assay = "RNA", layer = "counts")
 
 # OUTPUT folder
-outdir <- "../scRNA_DATA_control_raw/mtx_control_raw"
+outdir <- "../scRNA_DATA_3control"
 dir.create(outdir, showWarnings = FALSE)
 
 #matrix.mtx
-Matrix::writeMM(m, file.path(outdir, "control_matrix_raw.mtx"))
+Matrix::writeMM(m, file.path(outdir, "control_matrix.mtx"))
 
 #features.tsv (基因名)
 write.table(
   data.frame(rownames(m)),
-  file = file.path(outdir, "control_features_raw.tsv"),
+  file = file.path(outdir, "control_features.tsv"),
   quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
 )
 
 #barcodes.tsv (細胞ID)
 write.table(
   data.frame(colnames(m)),
-  file = file.path(outdir, "control_barcodes_raw.tsv"),
+  file = file.path(outdir, "control_barcodes.tsv"),
   quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
 )
 
 #metadata
 write.csv(
   control_data@meta.data,
-  file = file.path(outdir, "control_obs_raw.csv")
+  file = file.path(outdir, "control_obs.csv")
 )
