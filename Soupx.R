@@ -6,9 +6,9 @@ library(SoupX)
 library(DropletUtils)
 
 #讀入所有樣本
-ids <- list.dirs("../CellRanger_results", recursive = FALSE, full.names = FALSE) 
+ids <- list.dirs("../SoupX_CellRanger_results_merged", recursive = FALSE, full.names = FALSE) 
 #recursive = FALSE:僅列出第一層資料夾 #full.names = FALSE:僅列出資料夾名稱(不要完整路徑)
-base_dir <- "../CellRanger_results"   # 你的母資料夾
+base_dir <- "../SoupX_CellRanger_results_merged"   # 你的母資料夾
 
 for (id in ids) {
   message("Soupx正在處理:", id, " ...")
@@ -31,8 +31,8 @@ for (id in ids) {
 ##################################【所有sample合併】##################################
 library(Seurat)
 
-ids <- list.dirs("../SoupX_CellRanger_results", recursive = FALSE, full.names = FALSE) 
-base_dir <- "../SoupX_CellRanger_results"
+ids <- list.dirs("../SoupX_CellRanger_results_merged", recursive = FALSE, full.names = FALSE) 
+base_dir <- "../SoupX_CellRanger_results_merged"
 
 seurat_list <- list()
 

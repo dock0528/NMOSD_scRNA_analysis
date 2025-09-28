@@ -23,6 +23,7 @@ def test_gpu_with_torch():
     torch.cuda.synchronize()
     end = time.time()
 
+
     print(f"運算完成，耗時: {end - start:.4f} 秒")
 
 if __name__ == "__main__":
