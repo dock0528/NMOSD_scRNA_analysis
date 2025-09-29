@@ -8,6 +8,37 @@ head(data@assays$RNA@counts)
 colnames(data@meta.data)
 head(data@meta.data)
 
+##################【原始.rds存成.mtx】##############
+# 取 raw counts
+m <- GetAssayData(data, assay = "RNA", layer = "counts")
+
+# OUTPUT folder
+outdir <- "../scRNA_DATA/mtx_nmosd"
+dir.create(outdir, showWarnings = FALSE)
+
+#matrix.mtx
+Matrix::writeMM(m, file.path(outdir, "nmosd_matrix_ori.mtx"))
+
+#features.tsv (基因名)
+write.table(
+  data.frame(rownames(m)),
+  file = file.path(outdir, "nmosd_features_ori.tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#barcodes.tsv (細胞ID)
+write.table(
+  data.frame(colnames(m)),
+  file = file.path(outdir, "nmosd_barcodes_ori.tsv"),
+  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
+)
+
+#metadata
+write.csv(
+  control_data@meta.data,
+  file = file.path(outdir, "nmosd_obs_ori.csv")
+)
+
 ###################【取gene名，轉成Ensembl GENE ID】##################
 hugo_genes <- rownames(data@assays$RNA@meta.features)
 #write.table(hugo_genes, file = "../scRNA_DATA/HUGO_gene_list.csv", row.names = FALSE, col.names = FALSE, sep = ",", quote = FALSE)
@@ -24,39 +55,29 @@ cell_identities <- data.frame(
 #write.csv(cell_identities, file = "cell_identities.csv", row.names = FALSE)
 #-----------------------------------------------------------------------------
 
-#E-GEAD-551
-control_data<-readRDS("./E-GEAD-551_PBMC_scRNAseq.rds")
-head(control_data@assays$RNA@counts)
-control_cell_identities <- data.frame(
-  Cell_ID = names(control_data@active.ident),  # 細胞名稱
-  Identity = as.character(control_data@active.ident)  # 細胞分類標籤
-)
-
-write.csv(control_cell_identities , file = "cell_identities_control.csv", row.names = FALSE)
-
-#取健康人的gene cell matrix
-healthy_cell_identities<-control_cell_identities[grepl("^HC",control_cell_identities$Cell_ID),]
-
-
 ################【NMOSD scRNA data preprocessing】############
 library(Seurat)
 library(Matrix)
 library(dplyr)
 library(tidyr)
 
+# 建立新的 Seurat object(符合 paper criteria)
+doublet_cells<-read.csv("../Doublet_cells/nmosd_doublet_cells.txt",header=F)[[1]]
+scrublet_data <- subset(data, cells = setdiff(Cells(data), doublet_cells))
+
 #---{取出 raw counts}
-raw_count <- GetAssayData(data, assay = "RNA", slot = "counts")#從RNA提取counts
-print(dim(raw_count))   # gene x cell: 26135 x 195817
+raw_count <- GetAssayData(scrublet_data , assay = "RNA", slot = "counts")#從RNA提取counts
+print(dim(raw_count))   # gene x cell: 26135 x 195592
 
 # ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
 #單位:%
-if (!"percent.mt" %in% colnames(data@meta.data)) {
-  data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
+if (!"percent.mt" %in% colnames(scrublet_data @meta.data)) {
+  scrublet_data [["percent.mt"]] <- PercentageFeatureSet(scrublet_data , pattern = "^MT-")
 }
 #----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
 #單位:%
-if (!"percent.hb" %in% colnames(data@meta.data)) {
-  data[["percent.hb"]] <- PercentageFeatureSet(data, pattern = "^HB[AB][12]")
+if (!"percent.hb" %in% colnames(scrublet_data@meta.data)) {
+  scrublet_data[["percent.hb"]] <- PercentageFeatureSet(scrublet_data, pattern = "^HB[AB][12]")
 }    #^從字首匹配HB 、第3個字A or B、第4個字1 or 2
 
 #----paper criteria
@@ -70,12 +91,12 @@ sample_col<-"orig.ident"
 
 #QC table
 qc_df <- data.frame(
-  sample       = data@meta.data[[sample_col]],
-  nCount_RNA   = data$nCount_RNA,
-  nFeature_RNA = data$nFeature_RNA,
-  percent.mt   = data$percent.mt,
-  percent.hb   = data$percent.hb,
-  row.names    = colnames(data)
+  sample       = scrublet_data@meta.data[[sample_col]],
+  nCount_RNA   = scrublet_data$nCount_RNA,
+  nFeature_RNA = scrublet_data$nFeature_RNA,
+  percent.mt   = scrublet_data$percent.mt,
+  percent.hb   = scrublet_data$percent.hb,
+  row.names    = colnames(scrublet_data)
 )
 
 #Each ample calculate 99th percentile（UMI、Features）
@@ -87,7 +108,6 @@ p99_table <- qc_df %>%
     .groups = "drop" #不要保留分組形式
   )
 
-cat("Per sample 99th percentiles:\n")
 print(n=25,p99_table)
 
 #Each sample filter criteria 
@@ -105,7 +125,7 @@ qc_df <- qc_df %>%
   )
 
 # 把cell barcodes放在 rownames(確保之後subset data對得上)
-rownames(qc_df) <- colnames(data) #每個sample_cell名
+rownames(qc_df) <- colnames(scrublet_data) #每個sample_cell名
 
 #[Each sample table] Row:criterion & Col:n_cells / percent
 overall_by_sample_long <- qc_df %>%
@@ -143,13 +163,13 @@ invisible(lapply(split(overall_by_sample_long, overall_by_sample_long$sample), f
 cells_to_keep <- rownames(qc_df)[!qc_df$flag_any]
 
 # 建立新的 Seurat object(符合 paper criteria)
-data_filtered <- subset(data, cells = cells_to_keep)
+data_filtered <- subset(scrublet_data, cells = cells_to_keep)
 
 # Filter counts matrix
 qc_count <- GetAssayData(data_filtered, assay = "RNA", slot = "counts")
 
 # Filter cell counts(Before vs After)
-cat("Before filtering:", ncol(data), "cells\n")
+cat("Before filtering:", ncol(scrublet_data), "cells\n")
 cat("After filtering:", ncol(data_filtered), "cells\n")
 
 #----{存raw count matrix + metadata為.rds}
