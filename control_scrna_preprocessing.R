@@ -91,20 +91,22 @@ library(Matrix)
 library(dplyr)
 library(tidyr)
 data =readRDS("../scRNA_DATA/E-GEAD-551_PBMC_scRNAseq(Healthy Control).rds")
+doublet_cells<-read.csv("../Doublet_cells/E_GEAD_551_doublet_cells.txt",header=F)[[1]] #81
+scrublet_data <- subset(data, cells = setdiff(Cells(data), doublet_cells))
 
 #---{取出 raw counts}
-raw_count <- GetAssayData(data, assay = "RNA", slot = "counts")#從RNA提取counts
-print(dim(raw_count))   # gene x cell: 24541 x 39885
+raw_count <- GetAssayData(scrublet_data , assay = "RNA", slot = "counts")#從RNA提取counts
+print(dim(raw_count))   # gene x cell: 24541 x 39804
 
 # ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
 #單位:%
-if (!"percent.mt" %in% colnames(data@meta.data)) {
-  data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
+if (!"percent.mt" %in% colnames(scrublet_data @meta.data)) {
+  scrublet_data [["percent.mt"]] <- PercentageFeatureSet(scrublet_data , pattern = "^MT-")
 }
 #----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
 #單位:%
-if (!"percent.hb" %in% colnames(data@meta.data)) {
-  data[["percent.hb"]] <- PercentageFeatureSet(data, pattern = "^HB[AB][12]")
+if (!"percent.hb" %in% colnames(scrublet_data @meta.data)) {
+  scrublet_data [["percent.hb"]] <- PercentageFeatureSet(scrublet_data , pattern = "^HB[AB][12]")
 }    #^從字首匹配HB 、第3個字A or B、第4個字1 or 2
 
 #----paper criteria
@@ -114,17 +116,17 @@ mitochondrial_max  <- 12
 hemoglobin_max  <- 10
 
 #---{sample欄位}
-head(data@meta.data)
+head(scrublet_data @meta.data)
 sample_col<-"ID"
 
 #QC table
 qc_df <- data.frame(
-  sample       = data@meta.data[[sample_col]],
-  nCount_RNA   = data$nCount_RNA,
-  nFeature_RNA = data$nFeature_RNA,
-  percent.mt   = data$percent.mt,
-  percent.hb   = data$percent.hb,
-  row.names    = colnames(data)
+  sample       = scrublet_data @meta.data[[sample_col]],
+  nCount_RNA   = scrublet_data $nCount_RNA,
+  nFeature_RNA = scrublet_data $nFeature_RNA,
+  percent.mt   = scrublet_data $percent.mt,
+  percent.hb   = scrublet_data $percent.hb,
+  row.names    = colnames(scrublet_data )
 )
 
 #Each sample calculate 99th percentile（UMI、Features）
@@ -153,7 +155,7 @@ qc_df <- qc_df %>%
   )
 
 # 把cell barcodes放在 rownames(確保之後subset data對得上)
-rownames(qc_df) <- colnames(data) #每個sample_cell名
+rownames(qc_df) <- colnames(scrublet_data ) #每個sample_cell名
 
 #[Each sample table] Row:criterion & Col:n_cells / percent
 overall_by_sample_long <- qc_df %>%
@@ -191,13 +193,13 @@ invisible(lapply(split(overall_by_sample_long, overall_by_sample_long$sample), f
 cells_to_keep <- rownames(qc_df)[!qc_df$flag_any]
 
 # 建立新的 Seurat object(符合 paper criteria)
-data_filtered <- subset(data, cells = cells_to_keep)
+data_filtered <- subset(scrublet_data , cells = cells_to_keep)
 
 # Filter counts matrix
 qc_count <- GetAssayData(data_filtered, assay = "RNA", slot = "counts")
 
 # Filter cell counts(Before vs After)
-cat("Before filtering:", ncol(data), "cells\n")
+cat("Before filtering:", ncol(scrublet_data), "cells\n")
 cat("After filtering:", ncol(data_filtered), "cells\n")
 
 #----{存raw count matrix + metadata為.rds}
@@ -219,7 +221,7 @@ DefaultAssay(data_filtered_clean) <- "RNA"
 
 #驗證是否含counts
 Layers(data_filtered_clean[["RNA"]])   #counts
-dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24541 x 39397
+dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24541 x 39318
 
 # 讓 data layer = counts（關鍵一步）
 data_filtered_clean <-SetAssayData(
@@ -229,7 +231,7 @@ data_filtered_clean <-SetAssayData(
   new.data = GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
 )
 Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
-dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24541 x 39397
+dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24541 x 39318
 
 # RDS 格式
 saveRDS(data_filtered_clean , "../scRNA_DATA/E-GEAD-551_count_metadata.rds")

@@ -489,7 +489,7 @@ colnames(counts) <- colnames(filtered_data)
 protein_coding_gene_list<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32(protein coding all).csv")$HugoSymbol #16511
 keep_genes <- rownames(counts) %in% protein_coding_gene_list
 counts_pc <- counts[keep_genes, ]
-#dim(counts_pc) 16511x193384
+#dim(counts_pc) 16511x193159
 
 # 取metadata
 metadata_filtered<-filtered_data@meta.data
