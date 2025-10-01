@@ -1,102 +1,29 @@
-#install.packages("SeuratObject")
-#install.packages("Seurat")
 library(SeuratObject)
 library(Seurat)
-control_data=readRDS("../scRNA_DATA/E-GEAD-551_PBMC_scRNAseq.rds")
-head(control_data@assays$RNA@counts)
+control_data=readRDS("../scRNA_DATA_3control/Control_merged_SoupX_3samples.rds")
 
-colnames(control_data@meta.data)
+####################{檢查"原始"資料內容}##################
+#View(control_data)
+head(control_data@assays$RNA@layers$counts) #dgCMatrix
+dim(control_data@assays$RNA@layers$counts) #38606 x 27909
+rownames(control_data) #Features(ENSG)
+colnames(control_data) #Cells
+
+colnames(control_data@meta.data) #metadata
 head(control_data@meta.data)
 
-################{原始data存成.mtx}##################
-library(Matrix)
-
-# 取 raw counts
-m <- GetAssayData(control_data, assay = "RNA", layer = "counts")
-
-# OUTPUT folder
-outdir <- "../scRNA_DATA/mtx_control"
-dir.create(outdir, showWarnings = FALSE)
-
-#matrix.mtx
-Matrix::writeMM(m, file.path(outdir, "control_matrix.mtx"))
-
-#features.tsv (基因名)
-write.table(
-  data.frame(rownames(m)),
-  file = file.path(outdir, "control_features.tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#barcodes.tsv (細胞ID)
-write.table(
-  data.frame(colnames(m)),
-  file = file.path(outdir, "control_barcodes.tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#metadata
-write.csv(
-  control_data@meta.data,
-  file = file.path(outdir, "control_obs.csv")
-)
-
-#----------------------------------------------------
-
-#----{取 Healthy Control}
-# 只保留 Condition == "Healthy" 的細胞 (Healthy Control)
-healthy_data <- subset(control_data, subset = Condition == "Healthy")
-
-# ----{存成RDS 格式}
-#saveRDS(healthy_data  , "../scRNA_DATA/E-GEAD-551_PBMC_scRNAseq(Healthy Control).rds")
-
-################{Healthy Control data存成.mtx}##################
-library(Matrix)
-
-# 取 raw counts
-m_hc <- GetAssayData(healthy_data , assay = "RNA", layer = "counts")
-
-# OUTPUT folder
-outdir <- "../scRNA_DATA/mtx_control"
-dir.create(outdir, showWarnings = FALSE)
-
-#matrix.mtx
-Matrix::writeMM(m_hc, file.path(outdir, "Healthy_Control_matrix.mtx"))
-
-#features.tsv (基因名)
-write.table(
-  data.frame(rownames(m_hc)),
-  file = file.path(outdir, "Healthy_Control_features.tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#barcodes.tsv (細胞ID)
-write.table(
-  data.frame(colnames(m_hc)),
-  file = file.path(outdir, "Healthy_Control_barcodes.tsv"),
-  quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE
-)
-
-#metadata
-write.csv(
-  healthy_data@meta.data,
-  file = file.path(outdir, "Healthy_Control_obs.csv")
-)
-
-
-################【Healthy Control scRNA data preprocessing】############
+#####################{Scrublet後的Control DATA}###################
 library(Seurat)
 library(SeuratObject)
 library(Matrix)
 library(dplyr)
 library(tidyr)
-data =readRDS("../scRNA_DATA/E-GEAD-551_PBMC_scRNAseq(Healthy Control).rds")
-doublet_cells<-read.csv("../Doublet_cells/E_GEAD_551_doublet_cells.txt",header=F)[[1]] #81
-scrublet_data <- subset(data, cells = setdiff(Cells(data), doublet_cells))
+doublet_cells<-read.csv("../Doublet_cells/3control_doublet_cells.txt",header=F)[[1]] #1144
+scrublet_data <- subset(control_data, cells = setdiff(Cells(control_data), doublet_cells))
 
 #---{取出 raw counts}
 raw_count <- GetAssayData(scrublet_data , assay = "RNA", slot = "counts")#從RNA提取counts
-print(dim(raw_count))   # gene x cell: 24541 x 39804
+print(dim(raw_count))   # gene x cell: 38606 x 26765
 
 # ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
 #單位:%
@@ -117,7 +44,7 @@ hemoglobin_max  <- 10
 
 #---{sample欄位}
 head(scrublet_data @meta.data)
-sample_col<-"ID"
+sample_col<-"orig.ident"
 
 #QC table
 qc_df <- data.frame(
