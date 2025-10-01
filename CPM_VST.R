@@ -39,11 +39,21 @@ plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scR
     sub_data <- data[, idx]
     
     # 計算 CPM 和 log2(CPM+1)
+    #total_UMI <- colSums(sub_data)
+    #total_UMI[total_UMI == 0] <- 1
+    #cpm <- t(t(sub_data) / total_UMI) * 1e6
+    #cpm_values <- cpm@x
+    #log_cpm_values <- log2(cpm_values + 1)
+    
+    # 計算 CPM 和 log2(CPM+1) >>>(速度較快!!!)
+    sub_data <- sub_data <- as(sub_data, "CsparseMatrix") #轉成dgCMatrix
     total_UMI <- colSums(sub_data)
     total_UMI[total_UMI == 0] <- 1
-    cpm <- t(t(sub_data) / total_UMI) * 1e6
+    cpm <- sub_data
+    cpm@x <- (cpm@x / rep.int(total_UMI, diff(cpm@p))) * 1e6 #cpm@x取非零值 #diff(cpm@p)每個 column 的非零元素個數
     cpm_values <- cpm@x
     log_cpm_values <- log2(cpm_values + 1)
+    
     
     # 輸出圖檔
     output_file <- file.path(output_base_dir, paste0(sample, "_CPM_plot.png"))
@@ -62,7 +72,7 @@ plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scR
 plot_cpm_by_sample(
   mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx",
   barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(protein coding).tsv",
-  output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD(protein coding)"
+  output_base_dir = "../scRNA_DATA/plot_CPM_NMOSD(protein coding)_test"
 )
 
 ######################################【"VST" for each sample】############################################
@@ -76,6 +86,23 @@ library(tools)
 #----{讀檔}
 nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx")
 
+#----{計算 row-wise mean 和 sd，支援稀疏矩陣 (CsparseMatrix)}
+sparse_row_mean_sd <- function(mtx) {
+  n_cells <- ncol(mtx)
+  
+  # row mean
+  row_mean <- Matrix::rowMeans(mtx)
+  
+  # row variance = (E[X^2]) - (E[X])^2
+  row_sq   <- Matrix::rowSums(mtx^2)
+  row_var  <- (row_sq / n_cells) - (row_mean^2)
+  row_var[row_var < 0] <- 0  # 避免浮點誤差
+  
+  row_sd   <- sqrt(row_var)
+  
+  return(data.frame(mean = row_mean, sd = row_sd))
+}
+
 #----{畫圖}
 plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir) {
   
@@ -85,7 +112,7 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
   }
   
   # Read matrix.mtx
-  data <- readMM(mtx_file)
+  data <- as(readMM(mtx_file), "CsparseMatrix")
   
   # Read barcodes (cells)
   barcodes <- read.delim(barcode_file, header = FALSE, stringsAsFactors = FALSE)[,1]
@@ -104,21 +131,18 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
     
     #取sample的data
     idx <- which(sample_ids == sample)
-    sub_data <- data[, idx]
+    sub_data <- as(data[, idx], "CsparseMatrix")
   
     #VST要確保gene在cell的raw count>0
-    sub_data <- as(sub_data, "CsparseMatrix") #確保稀疏格式
     data_filter <- sub_data[rowSums(sub_data) > 0, ] 
   
-    #row count & log2計算
-    raw_mat <- as.matrix(data_filter)
-    log2_mat <- log2(raw_mat + 1)
     
-    get_mean_sd <- function(mat) {
-      data.frame(mean = rowMeans(mat), sd = rowSds(mat))
-    }
-    df_raw <- get_mean_sd(raw_mat)
-    df_log <- get_mean_sd(log2_mat)
+    # raw counts
+    df_raw <- sparse_row_mean_sd(data_filter)
+    
+    # log2(count+1)
+    log_mat <- log1p(data_filter)   # log1p(x) = log(x+1)
+    df_log  <- sparse_row_mean_sd(log_mat)
     
     # 輸出圖檔
     output_file <- file.path(output_base_dir, paste0(sample, "_VST_plot.png"))
@@ -137,8 +161,12 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
          xlab = "Mean", ylab = "SD",
          xlim = c(0, 20), ylim = c(0, 100))
     
-    vst_out <- sctransform::vst(data_filter, latent_var = c("log_umi"), return_gene_attr = TRUE, 
-                                return_cell_attr = TRUE, verbosity = 1)
+    vst_out <- sctransform::vst(data_filter, 
+                                method = "glmGamPoi", #適合scrna
+                                latent_var = c("log_umi"), 
+                                return_gene_attr = TRUE, 
+                                return_cell_attr = TRUE, 
+                                verbosity = 1)
     
     #latent_var = c("log_umi"):每個 cell 的 UMI 總數取log ->模型考慮細胞的log UMI 數來校正定序深度差異
     #return_gene_attr = TRUE:輸出基因層級的統計資訊
