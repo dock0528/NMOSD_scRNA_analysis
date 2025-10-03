@@ -76,13 +76,13 @@ plot_cpm_by_sample(
 )
 
 ######################################【"VST" for each sample】############################################
-
+#BiocManager::install("glmGamPoi")
 #載入套件
 library(Matrix)
 library(matrixStats)
 library(sctransform)
 library(tools)
-
+library(glmGamPoi)
 #----{讀檔}
 nmosd_matrix <- readMM("../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx")
 
@@ -198,7 +198,7 @@ plot_vst_comparison(
   mtx_file = "../scRNA_DATA/mtx_nmosd/NMOSD_matrix(protein coding).mtx",
   barcode_file = "../scRNA_DATA/mtx_nmosd/NMOSD_barcodes(protein coding).tsv",
   gene_file = "../scRNA_DATA/mtx_nmosd/NMOSD_features(protein coding).tsv",
-  output_base_dir = "../scRNA_DATA/plot_VST_NMOSD(protein coding)"
+  output_base_dir = "../scRNA_DATA/plot_VST_NMOSD(protein coding)_test"
 )
 
 #########################【IFN-I DEGs in scRNA DATA】#########################
