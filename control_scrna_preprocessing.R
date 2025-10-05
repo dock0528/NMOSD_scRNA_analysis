@@ -234,4 +234,4 @@ Layers(data_filtered_clean[["RNA"]]) #"counts" "data"
 dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24541 x 39318
 
 # RDS 格式
-saveRDS(data_filtered_clean , "../scRNA_DATA/E-GEAD-551_count_metadata.rds")
+saveRDS(data_filtered_clean , "../scRNA_DATA/Filter_low_quality_cells_rdsE-GEAD-551_count_metadata.rds")

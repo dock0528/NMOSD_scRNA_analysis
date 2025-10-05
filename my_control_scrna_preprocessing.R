@@ -12,6 +12,14 @@ colnames(control_data) #Cells
 colnames(control_data@meta.data) #metadata
 head(control_data@meta.data)
 
+################{取粒線體 & 血紅素的ENSG}#############
+ensg_to_hugo<-read.csv("../scRNA_DATA/features_v44.tsv",sep='\t',header = F)[,1:2]
+nrow(ensg_to_hugo) #38606
+colnames(ensg_to_hugo)<-c('ENSG','HugoSymbol')
+
+mt_ensg <- ensg_to_hugo$ENSG[grepl("^MT-", ensg_to_hugo$HugoSymbol)] #13個
+hb_ensg <- ensg_to_hugo$ENSG[grepl("^HB[AB][12]",ensg_to_hugo$HugoSymbol)] #2個
+
 #####################{Scrublet後的Control DATA}###################
 library(Seurat)
 library(SeuratObject)
@@ -28,12 +36,12 @@ print(dim(raw_count))   # gene x cell: 38606 x 26765
 # ----計算每個cell粒線體基因(以MT開頭)的reads占總reads比例 
 #單位:%
 if (!"percent.mt" %in% colnames(scrublet_data @meta.data)) {
-  scrublet_data [["percent.mt"]] <- PercentageFeatureSet(scrublet_data , pattern = "^MT-")
+  scrublet_data [["percent.mt"]] <- PercentageFeatureSet(scrublet_data ,features = mt_ensg)
 }
 #----計算每個 cell 的血紅素基因（HBA1, HBA2, HBB）占總 reads 的比例
 #單位:%
 if (!"percent.hb" %in% colnames(scrublet_data @meta.data)) {
-  scrublet_data [["percent.hb"]] <- PercentageFeatureSet(scrublet_data , pattern = "^HB[AB][12]")
+  scrublet_data [["percent.hb"]] <- PercentageFeatureSet(scrublet_data ,features = hb_ensg)
 }    #^從字首匹配HB 、第3個字A or B、第4個字1 or 2
 
 #----paper criteria
@@ -148,7 +156,7 @@ DefaultAssay(data_filtered_clean) <- "RNA"
 
 #驗證是否含counts
 Layers(data_filtered_clean[["RNA"]])   #counts
-dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:24541 x 39318
+dim(GetAssayData(data_filtered_clean, layer = "counts"))   # genes x cells:38606 x 25053
 
 # 讓 data layer = counts（關鍵一步）
 data_filtered_clean <-SetAssayData(
@@ -158,7 +166,7 @@ data_filtered_clean <-SetAssayData(
   new.data = GetAssayData(data_filtered_clean, assay = "RNA", layer = "counts")
 )
 Layers(data_filtered_clean[["RNA"]]) #"counts" "data" 
-dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:24541 x 39318
+dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:38606x 25053
 
 # RDS 格式
-saveRDS(data_filtered_clean , "../scRNA_DATA/E-GEAD-551_count_metadata.rds")
+saveRDS(data_filtered_clean , "../scRNA_DATA/Filter_low_quality_cells_rds/SRP349890_count_metadata.rds")
