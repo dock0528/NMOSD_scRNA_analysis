@@ -43,9 +43,42 @@ saveRDS(control_protein_data, "../scRNA_DATA/Merged_protein_coding_genes/E-GEAD-
 nmosd_protein_data<-readRDS("../scRNA_DATA/Merged_protein_coding_genes/NMOSD_count_metadata(protein_coding).rds")
 control_protein_data<-readRDS("../scRNA_DATA/Merged_protein_coding_genes/E-GEAD-551_count_metadata(protein_coding).rds")
 
+#先補回原本dgCMatrix的gene和cell名
+#{NMOSD}
+nmosd_genes<-rownames(nmosd_protein_data)
+rownames(nmosd_protein_data[["RNA"]]@layers$counts) <- nmosd_genes
+rownames(nmosd_protein_data[["RNA"]]@layers$data) <- nmosd_genes
+colnames(nmosd_protein_data[["RNA"]]@layers$counts) <-colnames(nmosd_protein_data)
+colnames(nmosd_protein_data[["RNA"]]@layers$data) <-colnames(nmosd_protein_data)
+
+#{Control}
+idx <- match(nmosd_genes, rownames(control_protein_data))
+
+control_protein_data[["RNA"]]@layers$counts <-
+  control_protein_data[["RNA"]]@layers$counts[idx, , drop = FALSE]
+
+control_protein_data[["RNA"]]@layers$data <-
+  control_protein_data[["RNA"]]@layers$data[idx, , drop = FALSE]
+
+#Seurat內層gene和cell名 (重要!!!)
+rownames(control_protein_data[["RNA"]]@layers$counts) <- nmosd_genes
+rownames(control_protein_data[["RNA"]]@layers$data) <- nmosd_genes
+colnames(control_protein_data[["RNA"]]@layers$counts) <-colnames(control_protein_data)
+colnames(control_protein_data[["RNA"]]@layers$data) <-colnames(control_protein_data)
+
+# Seurat外層gene和cell名  (重要!!!)
+rownames(control_protein_data) <- nmosd_genes
+
+# 檢查
+all(rownames(control_protein_data) == rownames(nmosd_protein_data)) #要為TRUE
+
 #----{確認細胞名}
 head(colnames(nmosd_protein_data))
 head(colnames(control_protein_data))
+
+#----{確認基因名}
+head(rownames(nmosd_protein_data))
+head(rownames(control_protein_data))
 
 #----{只保留metadata為"orig.ident", "nCount_RNA","nFeature_RNA"}
 nmosd_protein_data@meta.data <- nmosd_protein_data@meta.data[, (colnames(nmosd_protein_data@meta.data) %in% c("orig.ident", "nCount_RNA","nFeature_RNA"))]
@@ -53,51 +86,44 @@ control_protein_data@meta.data<- control_protein_data@meta.data[, (colnames(cont
 colnames(control_protein_data@meta.data)[colnames(control_protein_data@meta.data) == "ID"] <- "orig.ident"
 
 #合併
-merged_protein_data <- merge(nmosd_protein_data, y = control_protein_data, merge.data = FALSE)
+merged_protein_data <- merge(nmosd_protein_data, y = control_protein_data, merge.data = TRUE)
 
-#----{將原本分開的counts和data和}
-mat_counts <- cbind(
-  merged_protein_data@assays$RNA@layers$counts.NMOSD,
-  merged_protein_data@assays$RNA@layers$counts.Control
-)
+#確認layers
+Layers(merged_protein_data[["RNA"]]) # "counts.NMOSD","counts.Control","data.NMOSD","data.Control"  
+rownames(merged_protein_data) #Features(ENSG)
+colnames(merged_protein_data) #Cells
 
-mat_data <- cbind(
-  merged_protein_data@assays$RNA@layers$data.NMOSD,
-  merged_protein_data@assays$RNA@layers$data.Control
-)
+#---{JoinLayers:合併多層layer}
+merged_protein_data[["RNA"]] <- JoinLayers(merged_protein_data[["RNA"]])
+Layers(merged_protein_data[["RNA"]])  #"data"   "counts"
 
-# 用 SetAssayData() 寫入 Assay5
-merged_protein_data <- SetAssayData(
-  merged_protein_data,
-  assay = "RNA",
-  slot = "counts",
-  new.data = mat_counts
-)
-
-merged_protein_data <- SetAssayData(
-  merged_protein_data,
-  assay = "RNA",
-  slot = "data",
-  new.data = mat_data
-)
-
-#刪掉不要的layers
-merged_protein_data@assays$RNA@layers <- list()
+#----{補回Seurat內層gene和cell名}
+rownames(merged_protein_data[["RNA"]]@layers$counts) <- rownames(merged_protein_data)
+rownames(merged_protein_data[["RNA"]]@layers$data) <- rownames(merged_protein_data)
+colnames(merged_protein_data[["RNA"]]@layers$counts)<-colnames(merged_protein_data)
+colnames(merged_protein_data[["RNA"]]@layers$data)<-colnames(merged_protein_data)
 
 ####################{檢查"合併後"的資料內容}##################
 View(merged_protein_data)
-head(merged_protein_data@assays$RNA@) #dgCMatrix
-dim(control_filtered_data@assays$RNA@layers$counts) #24541 x 39318
-rownames(control_filtered_data) #Features(ENSG)
-colnames(control_filtered_data) #Cells
+head(merged_protein_data@assays$RNA@layers) #dgCMatrix
+dim(merged_protein_data@assays$RNA@layers$counts) #15906 x 232477
+rownames(merged_protein_data) #Features(ENSG)
+colnames(merged_protein_data) #Cells
 
-colnames(control_filtered_data@meta.data) #metadata
-head(control_filtered_data@meta.data)####################{檢查"Control"資料內容}##################
-View(control_filtered_data)
-head(control_filtered_data@assays$RNA@layers$counts) #dgCMatrix
-dim(control_filtered_data@assays$RNA@layers$counts) #24541 x 39318
-rownames(control_filtered_data) #Features(ENSG)
-colnames(control_filtered_data) #Cells
+colnames(merged_protein_data@meta.data) #metadata
+head(merged_protein_data@meta.data)
+tail(merged_protein_data@meta.data)
 
-colnames(control_filtered_data@meta.data) #metadata
-head(control_filtered_data@meta.data)
+#----{畫圖確認Merge前後gene counts正確}
+gene <- "NOC2L"  
+plot(
+  nmosd_protein_data[["RNA"]]@layers$counts[gene, ],
+  merged_protein_data[["RNA"]]@layers$counts[gene, colnames(nmosd_protein_data)],
+  xlab = "Original counts",
+  ylab = "Merged counts",
+  main = paste("Gene:", gene)
+)
+abline(0, 1, col = "red")
+
+#存rds
+saveRDS(merged_protein_data , "../scRNA_DATA/Merged_protein_coding_genes/Merged_count_metadata(protein_coding).rds")
