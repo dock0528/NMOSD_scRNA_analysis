@@ -28,7 +28,7 @@ plot_cpm_by_sample <- function(mtx_file, barcode_file, output_base_dir = "../scR
   colnames(data) <- barcodes
   
   #取sample名 
-  sample_ids <- sub("_.*", "", barcodes)
+  sample_ids <- sub("(_[^_]+)$", "", barcodes)
   
   #每個sample分組計算 CPM
   for (sample in unique(sample_ids)) {
@@ -123,7 +123,7 @@ plot_vst_comparison <- function(mtx_file,barcode_file,gene_file, output_base_dir
   rownames(data) <- genes
   
   #取sample名 
-  sample_ids <- sub("_.*", "", barcodes)
+  sample_ids <- sub("(_[^_]+)$", "", barcodes)
   
   #每個sample分組計算VST
   for (sample in unique(sample_ids)) {
