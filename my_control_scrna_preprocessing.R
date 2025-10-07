@@ -170,3 +170,47 @@ dim(GetAssayData(data_filtered_clean, layer="data"))  # genes x cells:38606x 250
 
 # RDS 格式
 saveRDS(data_filtered_clean , "../scRNA_DATA/Filter_low_quality_cells_rds/SRP349890_count_metadata.rds")
+
+####################【NMOSD 和 My control交集genes篩protein coding gene】#######################
+intersect_genes<-read.csv("../scRNA_DATA/NMOSD_v32_Control_v44_merged_genes.csv") #25291
+
+#----連到Ensembl
+library(biomaRt)
+ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+
+#----抓註解
+annot <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "gene_biotype"),
+  filters    = "ensembl_gene_id",
+  values     = intersect_genes$ENSG,
+  mart       = ensembl
+)
+
+#----篩 protein coding genes
+protein_coding_genes <- annot[annot$gene_biotype == "protein_coding", ] #16492個
+
+#----重複的hugo symbol
+dup_hugo <- protein_coding_genes[
+  duplicated(protein_coding_genes$external_gene_name) | 
+    duplicated(protein_coding_genes$external_gene_name, fromLast = TRUE),  #顯示所有
+]
+dup_hugo 
+subset(dup_hugo, !external_gene_name=="") #0個hugo重複
+
+merged_df <- merge(
+  protein_coding_genes, 
+  intersect_genes, 
+  by.x = "ensembl_gene_id", 
+  by.y = "ENSG", 
+  all.x = TRUE
+)
+merged_df <- subset(merged_df, select = -external_gene_name) #16492
+merged_df <-merged_df[!merged_df$ensembl_gene_id=='ENSG00000183889',] 
+#重複的hugo為NPIPA9(對應ENSG:ENSG00000183889、ENSG00000233024) ->去除ENSG00000183889 ->#16491
+
+
+
+# 移除 gene_biotype 欄位
+merged_df  <- merged_df [, c("HugoSymbol_merged", "ensembl_gene_id")] #15906 protein coding genes
+#write.csv(merged_df,'../scRNA_DATA/HUGO_with_ENSG_v32_v44(protein coding).csv',row.names = F)
+
