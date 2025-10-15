@@ -1,5 +1,6 @@
 library(SeuratObject)
 library(Seurat)
+packageVersion("SeuratObject")
 nmosd_filtered_data<-readRDS("../scRNA_DATA/Filter_low_quality_cells_rds/NMOSD_count_metadata.rds")
 control_filtered_data<-readRDS("../scRNA_DATA/Filter_low_quality_cells_rds/SRP349890_count_metadata.rds")
 
@@ -25,34 +26,36 @@ head(control_filtered_data@meta.data)
 
 ####################{篩選protein coding genes}##################
 #----{protein coding gene list}
-protein_coding_df<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32_v44(protein coding).csv")
+protein_coding_df<-read.csv("../scRNA_DATA/HUGO_with_ENSG_v32_v44(protein coding).csv") #16491
 colnames(protein_coding_df) <- c("HugoSymbol_merged", "ENSG") 
-protein_coding_df<-protein_coding_df[!protein_coding_df$ENSG %in% c('ENSG00000269226','ENSG00000284024'),] #16489
+protein_coding_df<-protein_coding_df[!protein_coding_df$ENSG %in% c("ENSG00000269226","ENSG00000284024"),] #16490 (2個hugo重複，轉成v44HUGO不同)
 protein_coding_ENSG<-protein_coding_df$ENSG #16489
 protein_coding_HUGO<-protein_coding_df$HugoSymbol_merged #16489
 
+
 #----{NMOSD}
-hugo_map_ensg_df<-read.csv("../scRNA_DATA/nmosd_v32_HUGO_map_ENSG.csv")
-hugo_map_ensg.protein_coding<-hugo_map_ensg_df[hugo_map_ensg_df$ENSG %in% protein_coding_ENSG,] #16506
+hugo_map_ensg_df<-read.csv("../scRNA_DATA/nmosd_v32_HUGO_map_ENSG.csv") #26188
+hugo_map_ensg.protein_coding<-hugo_map_ensg_df[hugo_map_ensg_df$ENSG %in% protein_coding_ENSG,] #16507
 
 #----重複的hugo symbol
 dup_ensg<-hugo_map_ensg.protein_coding[
   duplicated(hugo_map_ensg.protein_coding$ENSG) | 
     duplicated(hugo_map_ensg.protein_coding$ENSG, fromLast = TRUE),  #顯示所有
-]#17個重複
+]
+nrow(dup_ensg)#17個重複
 
 #去重複
 dedup_map <- hugo_map_ensg.protein_coding[!duplicated(hugo_map_ensg.protein_coding$ENSG), ] #16489 去重複，若有重複保留第一個出現
 merged_protein_coding_df <- merge(dedup_map, protein_coding_df, by = "ENSG", all = TRUE) #16489
 
 nmosd_protein_data <- subset(nmosd_filtered_data, features = merged_protein_coding_df$HugoSymbol)
-dim(nmosd_protein_data@assays$RNA@layers$counts) #16489 x 193159 怪怪的...
-#merged_protein_coding_df[
-#  duplicated(merged_protein_coding_df$HugoSymbol) | 
-#    duplicated(merged_protein_coding_df$HugoSymbol, fromLast = TRUE),  #顯示所有] 
-#出現4個不一樣的gene名(在原本nmosd是2個)
+dim(nmosd_protein_data@assays$RNA@layers$counts) #16489 x 193159 
+merged_protein_coding_df[
+  duplicated(merged_protein_coding_df$HugoSymbol) | 
+    duplicated(merged_protein_coding_df$HugoSymbol, fromLast = TRUE), ] #顯示所有
+#出現4個不一樣的gene名(在原本nmosd是2個:TMSB15B & HSPA14) ->修改前面protein_coding_df
 
-# create gene mappingsetNames(目標,原本)
+# create gene mapping setNames(目標,原本)
 gene_mapping_nmosd <- setNames(merged_protein_coding_df$HugoSymbol_merged,merged_protein_coding_df$HugoSymbol)
 
 # 替換v32.HUGO 為 v44.HUGO
@@ -68,9 +71,10 @@ gene_mapping_control <- setNames(merged_protein_coding_df$HugoSymbol_merged,merg
 # 替換為v44.HUGO
 rownames(control_protein_data) <- gene_mapping_control[rownames(control_protein_data )]
 
+
 #存rds
 saveRDS(nmosd_protein_data , "../scRNA_DATA/My_merged_protein_coding_genes/My_NMOSD_count_metadata(protein_coding).rds")
-saveRDS(control_protein_data, "../scRNA_DATA/Merged_protein_coding_genes/SRP349890_count_metadata(protein_coding).rds")
+saveRDS(control_protein_data, "../scRNA_DATA/My_merged_protein_coding_genes/SRP349890_count_metadata(protein_coding).rds")
 
 #################{合併nmosd & control rds}#################
 nmosd_protein_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_NMOSD_count_metadata(protein_coding).rds")
@@ -84,7 +88,7 @@ Layers(control_protein_data[["RNA"]]) #counts
 
 #先補回原本dgCMatrix的gene和cell名
 #{NMOSD}
-nmosd_genes<-rownames(nmosd_protein_data) #16489
+nmosd_genes<-rownames(nmosd_protein_data@assays$RNA)
 rownames(nmosd_protein_data[["RNA"]]@layers$counts) <- nmosd_genes
 colnames(nmosd_protein_data[["RNA"]]@layers$counts) <-colnames(nmosd_protein_data)
 
@@ -100,10 +104,16 @@ rownames(control_protein_data[["RNA"]]@layers$counts) <- nmosd_genes
 colnames(control_protein_data[["RNA"]]@layers$counts) <-colnames(control_protein_data)
 
 # Seurat外層gene和cell名  (重要!!!)
-rownames(control_protein_data) <- nmosd_genes
+#rownames(nmosd_protein_data@assays$RNA)會同步變動rownames(nmosd_protein_data)
+rownames(nmosd_protein_data@assays$RNA) <-nmosd_genes
+rownames(control_protein_data@assays$RNA) <-nmosd_genes
+rownames(nmosd_protein_data)<-nmosd_genes
+rownames(control_protein_data)<-nmosd_genes
 
 # 檢查
 all(rownames(control_protein_data) == rownames(nmosd_protein_data)) #要為TRUE
+all(rownames(nmosd_protein_data[["RNA"]]@layers$counts) == rownames(control_protein_data[["RNA"]]@layers$counts)) #要為TRUE
+
 
 #----{確認細胞名}
 head(colnames(nmosd_protein_data))
@@ -123,7 +133,7 @@ merged_protein_data <- merge(nmosd_protein_data, y = control_protein_data, merge
 
 #確認layers
 Layers(merged_protein_data[["RNA"]]) # "counts.NMOSD","counts.Control"
-rownames(merged_protein_data) #Features(ENSG)
+rownames(merged_protein_data) #Features(HUGO v44)
 colnames(merged_protein_data) #Cells
 
 #---{JoinLayers:合併多層layer}
