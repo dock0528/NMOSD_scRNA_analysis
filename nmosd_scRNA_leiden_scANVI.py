@@ -33,6 +33,10 @@ meta = pd.read_csv(r"C:\Users\JANE\Desktop\Wang實驗室\NMOSD研究計畫\scRNA
 # 確保 barcodes 一一對應
 ref.obs["celltype"] = meta.loc[ref.obs_names, "celltype.l2"].astype(str)
 
+#把原始ref中為doublet標記為unknown
+ref.obs["celltype"] = ref.obs["celltype"].replace({"Doublet": "Unknown"})
+
+
 #%%
 #common genes
 adata.var_names #adata gene name
@@ -69,7 +73,7 @@ adata_merged.obs["celltype"] = adata_merged.obs["celltype"].astype("category")
 print(adata_merged)
 
 #%%
-adata_merged.write_h5ad(r"C:\Users\JANE\Desktop\Wang實驗室\NMOSD研究計畫\scRNA\NMOSD_scANVI_DATA\adata_merged(Leiedn).h5ad")
+adata_merged.write_h5ad(r"C:\Users\JANE\Desktop\Wang實驗室\NMOSD研究計畫\scRNA\NMOSD_scANVI_DATA\Adata\adata_merged_for_scanvi(Leiden)_v2.h5ad")
 #%%
 #pip install scvi-tools==1.3.0
 import scvi
