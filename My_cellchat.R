@@ -7,7 +7,7 @@ library(circlize)
 library(ComplexHeatmap)
 
 #----{Import RDS}
-merge_data <- readRDS("C:/Users/Jane/Desktop/Wang實驗室/NMOSD研究計畫/scRNA/scRNA_DATA/My_merged_protein_coding_genes/My_merged_count_metadata(protein_coding).rds")
+merge_data <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_count_metadata(protein_coding).rds")
 
 #----{Normalize:校正不同細胞測序深度的差異}
 merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", scale.factor = 10000)
@@ -97,6 +97,9 @@ cellchat_NMOSD <- filterCommunication(cellchat_NMOSD, min.cells = 10) #某cellty
 cellchat_NMOSD <- computeCommunProbPathway(cellchat_NMOSD,thresh = 0.05) #thresh:significant interaction P-value criteria
 #saveRDS(cellchat_NMOSD, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD.rds")
 
+# ===【Import CellChat_NMOSD RDS】===
+cellchat_NMOSD <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD.rds")
+
 # ===【TNFRSF13C】===
 lr.idx <- grep("TNFRSF13C", cellchat_NMOSD@LR$LRsig$interaction_name)
 lr.use <- cellchat_NMOSD@LR$LRsig$interaction_name[lr.idx]
@@ -108,6 +111,18 @@ df_TNFRSF13C <- subsetCommunication(cellchat_NMOSD,  pairLR.use = lr_TNFRSF13C_d
 df_TNFRSF13C_Bnaive <- subset(df_TNFRSF13C, target == "B naive")
 df_TNFRSF13C_Bnaive
 
+# ===【 Calculate the aggregated cell–cell communication network】===
+# >>> for num of links & community probability
+# {BAFF}
+sources.use <- unique(df_TNFRSF13C$source)
+targets.use <-  unique(df_TNFRSF13C$target )
+cellchat_TNFRSF13C_BAFF_nmosd <- aggregateNet(
+  cellchat_NMOSD,
+  sources.use = sources.use,
+  targets.use = targets.use
+)
+
+# {BAFF target B_naive}
 sources.use <- unique(df_TNFRSF13C_Bnaive$source)
 targets.use <- "B naive"
 cellchat_TNFRSF13C_NMOSD <- aggregateNet(
@@ -117,16 +132,175 @@ cellchat_TNFRSF13C_NMOSD <- aggregateNet(
 )
 
 
+
+# ===【Chord diagram - BAFF】===
 par(mfrow = c(1, 1))
 plot.new()
 plot.window(xlim = c(-1, 1), ylim = c(-1, 1))
 netVisual_aggregate(
   cellchat_TNFRSF13C_NMOSD,
-  signaling = "BAFF",
+  signaling = "BAFF", #signaling pathway
+  signaling.name=NULL,
+  sources.use =sources.use,
   layout = "chord", 
   vertex.size.max = 6, 
   edge.width.max = 10,
   remove.isolate=TRUE,
   title.space = 4
 )
+
+# ===【Chord diagram - BAFF in Bnaive】===
+par(mfrow = c(1, 1))
+plot.new()
+plot.window(xlim = c(-1, 1), ylim = c(-1, 1))
+netVisual_aggregate(
+  cellchat_TNFRSF13C_NMOSD,
+  signaling = "BAFF", #signaling pathway
+  signaling.name='BAFF target B_naive',
+  sources.use =sources.use,
+  targets.use = targets.use,
+  layout = "chord", 
+  vertex.size.max = 6, 
+  edge.width.max = 10,
+  remove.isolate=TRUE,
+  title.space = 4
+)
+
+# ===【Circle diagram - BAFF in Bnaive】===
+par(mfrow = c(1, 1))
+plot.new()
+plot.window(xlim = c(-1, 1), ylim = c(-1, 1))
+netVisual_aggregate(
+  cellchat_TNFRSF13C_NMOSD,
+  signaling = "BAFF", #signaling pathway
+  signaling.name='BAFF target B_naive',
+  sources.use =sources.use,
+  targets.use = targets.use,
+  layout = "circle", 
+  vertex.size.max = 6, 
+  edge.width.max = 10,
+  remove.isolate=TRUE,
+  title.space = 1
+)
+
+# ===【Hierarchy plot - BAFF in Bnaive】===
+levels(cellchat_TNFRSF13C_NMOSD@idents) #[4] "B naive" 
+par(mfrow = c(1, 1))
+netVisual_aggregate(
+  cellchat_TNFRSF13C_NMOSD, 
+  signaling ="BAFF",
+  layout = "hierarchy",
+  vertex.receiver = seq(3,4), #設定target為"B memory",B naive"
+  pt.title = 8, #整體大小
+  edge.width.max = 12
+)
+
+# ===【Heatmap - BAFF 】===
+par(mfrow=c(1,1)) 
+netVisual_heatmap(cellchat_TNFRSF13C_NMOSD, signaling = "BAFF",
+                  measure="weight",font.size = 9)
+
+# ===【Heatmap - BAFF in Bnaive】===
+par(mfrow=c(1,1)) 
+netVisual_heatmap(cellchat_TNFRSF13C_NMOSD, signaling = "BAFF",
+                  measure="weight",font.size = 9,
+                  targets.use = targets.use,
+                  title.name='BAFF target B_naive')
+
+#----------------------【BAFF NMOSD vs Control】----------------------
+
+#----------------🔻{CellChat - Control}🔻------------------
+seurat_control <- subset(merge_data, subset = Condition == "Control")
+cellchat_control <- createCellChat(
+  object  = seurat_control,      # Seurat object
+  group.by = "Cell_label"    # cell type label
+)
+
+#----{L-R database}
+CellChatDB<-CellChatDB.human
+showDatabaseCategory(CellChatDB)
+#library(dplyr)
+#dplyr::glimpse(CellChatDB$interaction) #ligand–receptor資料庫
+
+# 取database (可只選某部分)
+#先全選
+CellChatDB.use<-CellChatDB
+
+#加入cellchat_NMOSD
+cellchat_control@DB<-CellChatDB.use
+cellchat_control <- subsetData(cellchat_control) # 資料過濾
+
+# === 【Identify over-expressed "ligands" or "receptors" in each cell group】===
+#devtools::install_github("immunogenomics/presto")
+library(presto) #讓 Wilcoxon 在 dgCSparse 下跑
+cellchat_control <- identifyOverExpressedGenes(cellchat_control)
+
+# identify over-expressed "L–R interactions"
+cellchat_control<- identifyOverExpressedInteractions(cellchat_control)
+
+### Each cell types lognormalized average
+computeAveExpr(cellchat_control, features = c("TNFRSF13C"),  
+               type = "triMean") 
+
+# ===【 Infer cell–cell communication at a L–R pair level】===
+cellchat_control <- computeCommunProb(cellchat_control, type = "triMean", trim = NULL, 
+                                    raw.use = TRUE,nboot = 20) #約20mins
+# raw.use = TRUE:用原始資料(lognormalized)做計算
+# nboot:跑幾次permutation決定pvalue (default=100)
+
+# ===【Filter fewer cells】===
+cellchat_control <- filterCommunication(cellchat_control, min.cells = 10) #某celltype少於10cells->drop #default=10
+
+# ===【 Infer cell–cell communication at a signaling pathway level】===
+cellchat_control<- computeCommunProbPathway(cellchat_control,thresh = 0.05) #thresh:significant interaction P-value criteria
+#saveRDS(cellchat_control, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control.rds")
+
+# ===【Import CellChat_control RDS】===
+cellchat_control <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control.rds")
+
+
+# ===【TNFRSF13C】===
+lr.idx_control <- grep("TNFRSF13C", cellchat_control@LR$LRsig$interaction_name)
+lr.use_control <- cellchat_control@LR$LRsig$interaction_name[lr.idx_control]
+lr.use_control #"TNFSF13B_TNFRSF13C"
+lr_TNFRSF13C_df_control<- data.frame(interaction_name = lr.use_control)
+df_TNFRSF13C_control <- subsetCommunication(cellchat_control,  pairLR.use = lr_TNFRSF13C_df_control)
+
+# ===【 Calculate the aggregated cell–cell communication network】===
+# >>> for num of links & community probability
+# {BAFF}
+sources.use <- unique(df_TNFRSF13C_control $source)
+targets.use <-  unique(df_TNFRSF13C_control $target )
+cellchat_TNFRSF13C_BAFF_control <- aggregateNet(
+  cellchat_control,
+  sources.use = sources.use,
+  targets.use = targets.use
+)
+
+# ===【Heatmap - BAFF 】===
+par(mfrow=c(1,1)) 
+netVisual_heatmap(cellchat_TNFRSF13C_BAFF_control, signaling = "BAFF",
+                  measure="weight",font.size = 9)
+
+#----------------------------------------------------------------------------------------------
+
+# ===【 Calculate the aggregated cell–cell communication network】===
+# >>> for num of links & community probability
+cellchat_NMOSD <- aggregateNet(cellchat_NMOSD)
+cellchat_control <- aggregateNet(cellchat_control)
+
+#===【Merge CellChat】===
+object.list <- list(NMOSD = cellchat_NMOSD, Control = cellchat_control ) 
+cellchat_merged <- mergeCellChat(object.list, add.names = names(object.list))
+#saveRDS(cellchat_merged  , file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_merged.rds")
+
+#===【Compare num_interaction & total_strength】===
+num_interaction<-compareInteractions(cellchat_merged , show.legend = F,  
+                                     group = c(1,2))      
+num_interaction
+
+total_strength<- compareInteractions(cellchat_merged, show.legend = F,  
+                                           group = c(1,2), measure = "weight") 
+total_strength
+
 
