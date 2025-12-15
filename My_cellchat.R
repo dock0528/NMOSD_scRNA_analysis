@@ -197,8 +197,10 @@ netVisual_aggregate(
 
 # ===【Heatmap - BAFF 】===
 par(mfrow=c(1,1)) 
-netVisual_heatmap(cellchat_TNFRSF13C_NMOSD, signaling = "BAFF",
-                  measure="weight",font.size = 9)
+ht1<-netVisual_heatmap(cellchat_TNFRSF13C_NMOSD, signaling = "BAFF",ylim.top=c(0,0.5),ylim.right=c(0,0.15),
+                       color.heatmap = c('#ffecec','#ff4040'),
+                       measure="weight",font.size = 9,col.show =c('B intermediate','B memory','B naive') )
+draw(ht1, padding = unit(c(5, 25, 5, 15), "mm"))  #(上,左,下,右) 
 
 # ===【Heatmap - BAFF in Bnaive】===
 par(mfrow=c(1,1)) 
@@ -279,8 +281,10 @@ cellchat_TNFRSF13C_BAFF_control <- aggregateNet(
 
 # ===【Heatmap - BAFF 】===
 par(mfrow=c(1,1)) 
-netVisual_heatmap(cellchat_TNFRSF13C_BAFF_control, signaling = "BAFF",
-                  measure="weight",font.size = 9)
+ht2<-netVisual_heatmap(cellchat_TNFRSF13C_BAFF_control, signaling = "BAFF",ylim.top=c(0,0.5),ylim.right=c(0,0.15),
+                       color.heatmap = c('#ffecec','#ffa0a0'),
+                       measure="weight",font.size = 9,col.show =c('B intermediate','B memory','B naive') )
+draw(ht2, padding = unit(c(5, 25, 5, 15), "mm"))  #(上,左,下,右)
 
 #----------------------------------------------------------------------------------------------
 
@@ -294,6 +298,10 @@ object.list <- list(NMOSD = cellchat_NMOSD, Control = cellchat_control )
 cellchat_merged <- mergeCellChat(object.list, add.names = names(object.list))
 #saveRDS(cellchat_merged  , file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_merged.rds")
 
+#===【Import CellChat_merge】===
+cellchat_merged<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_merged.rds")
+
+
 #===【Compare num_interaction & total_strength】===
 num_interaction<-compareInteractions(cellchat_merged , show.legend = F,  
                                      group = c(1,2))      
@@ -302,5 +310,22 @@ num_interaction
 total_strength<- compareInteractions(cellchat_merged, show.legend = F,  
                                            group = c(1,2), measure = "weight") 
 total_strength
+
+#---🔻{Heatmap: NMOSD vs Control}🔻---
+# ===【NMOSD: Heatmap - BAFF 】===
+par(mfrow=c(1,1)) 
+ht1<-netVisual_heatmap(cellchat_TNFRSF13C_NMOSD, signaling = "BAFF",ylim.top=c(0,0.5),ylim.right=c(0,0.15),
+                      color.heatmap = c('#ffecec','#ff4040'),
+                      measure="weight",font.size = 9,col.show =c('B intermediate','B memory','B naive') )
+draw(ht1, padding = unit(c(5, 25, 5, 15), "mm"))  #(上,左,下,右) 
+
+
+# ===【Control: Heatmap - BAFF 】===
+par(mfrow=c(1,1)) 
+ht2<-netVisual_heatmap(cellchat_TNFRSF13C_BAFF_control, signaling = "BAFF",ylim.top=c(0,0.5),ylim.right=c(0,0.15),
+                  color.heatmap = c('#ffecec','#ffa0a0'),
+                  measure="weight",font.size = 9,col.show =c('B intermediate','B memory','B naive') )
+draw(ht2, padding = unit(c(5, 25, 5, 15), "mm"))  #(上,左,下,右)
+
 
 
