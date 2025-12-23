@@ -1,5 +1,5 @@
 # Packages
-BiocManager::install(c("SingleCellExperiment", "scuttle"))
+#BiocManager::install(c("SingleCellExperiment", "scuttle"))
 library(scuttle)
 library(SingleCellExperiment)
 library(Seurat)

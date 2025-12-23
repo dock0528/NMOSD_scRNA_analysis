@@ -14,7 +14,7 @@ merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", sca
 
 #View(merge_data)
 
-#----{scANVI metadat 加入 RDS}
+#----{scANVI metadata 加入 RDS}
 # 讀scANVI後的metadata celltype
 celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_cell_metadata_CellChat.csv")
 head(celltype_metadata)

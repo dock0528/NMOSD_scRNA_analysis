@@ -1,4 +1,4 @@
-install.packages("SeuratObject")
+#install.packages("SeuratObject")
 #install.packages("Seurat")
 library(SeuratObject) # v5.2.0
 library(Seurat) # v5.3.0
