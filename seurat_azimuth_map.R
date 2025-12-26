@@ -26,34 +26,7 @@ my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My
 my_harmony_merged_data <- RunAzimuth(my_harmony_merged_data, reference = human_pbmc_ref )
 
 
-my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
-
-
-# 1) 取出你要的欄位（建議連 score 一起帶走）
-df_ct <- my_harmony_merged_data@meta.data[, c(
-  "predicted.celltype.l1",
-  "predicted.celltype.l2",
-  "predicted.celltype.l3"
-)]
-
-# 2) 把 cell barcode 存成一欄（非常重要）
-df_ct$cell_id <- rownames(df_ct)
-
-# 3) 存檔
-write.csv(df_ct, "../scRNA_DATA/My_merged_protein_coding_genes/My_Azimuth_celltype_prediceted.csv", row.names = FALSE, quote = TRUE)
-
-
-
-
-
-
-
-
-
-
-
-
-
+#my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
 
 #===【存成.h5ad】===
 #----{存Harmony後的rds}
