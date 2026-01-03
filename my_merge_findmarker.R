@@ -165,3 +165,62 @@ subset(all_results,
 subset(all_results,
        Celltype %in% c("CD4 Proliferating", "MAIT","CD8 Naive",'Treg') & Gene == "TNFRSF13C")
 
+#############################【Mono/DC subcelltype marker genes】###################
+library(Seurat)
+library(SeuratDisk)
+library(MAST)
+
+merge_data <- readRDS("C:/Users/Jane/Desktop/Wang實驗室/NMOSD研究計畫/scRNA/scRNA_DATA/My_merged_protein_coding_genes/My_merged_count_metadata(protein_coding).rds")
+
+#----{Normalize:校正不同細胞測序深度的差異}
+merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", scale.factor = 10000)
+
+#View(merge_data)
+
+# 讀scANVI後的metadata celltype
+mono_dc_sub_df<- read.csv("../scRNA_DATA/Mono_DC_cluster_subtype_nn30.csv")
+head(mono_dc_sub_df)
+
+# Cell counts
+sum(mono_dc_sub_df$cell_id %in% colnames(merge_data))  # 19463 cells
+
+# 用 cell_id 當 rownames
+rownames(mono_dc_sub_df) <- mono_dc_sub_df$cell_id
+
+# 取 Mono_DC
+common <- intersect(colnames(merge_data), rownames(mono_dc_sub_df))
+merge_data <- AddMetaData(merge_data, mono_dc_sub_df[common, c("Mono_DC_cluster","Mono_DC_subtype")])
+#View(merge_data)
+
+mono_dc <- subset(merge_data, subset = !is.na(Mono_DC_cluster))
+Idents(mono_dc) <- "Mono_DC_cluster" # 指定比較的欄位
+
+Mono_DC_DEA<- FindMarkers(
+  mono_dc,
+  ident.1 = "8", # Cluster8
+  ident.2 = NULL,        # vs other clusters
+  test.use = "MAST",
+  logfc.threshold = 0,
+  min.pct = 0.01,
+  min.cells.group = 3
+)
+
+# {Significant top30 genes}
+head(Mono_DC_DEA[order(mk8$p_val_adj), ], 30)
+
+# {看 pDC markers 是否顯著上升}
+pDC<-c('ITM2C', 'PLD4', 'SERPINF1', 'LILRA4', 'IL3RA', 'TPM2', 'MZB1', 'SPIB', 'IRF4', 'SMPD3')
+Mono_DC_DEA[pDC, c("avg_log2FC","pct.1","pct.2","p_val_adj")]
+
+# {Mono/DC other sub celltype markers}
+CD14Mono<-c('S100A9', 'CTSS', 'S100A8', 'LYZ', 'VCAN', 'S100A12', 'IL1B', 'CD14', 'G0S2', 'FCN1')
+Mono_DC_DEA[CD14Mono, c("avg_log2FC","pct.1","pct.2","p_val_adj")]
+
+CD16Mono<-c('CDKN1C', 'FCGR3A', 'PTPRC', 'LST1', 'IER5', 'MS4A7', 'RHOC', 'IFITM3', 'AIF1', 'HES4')
+Mono_DC_DEA[CD16Mono, c("avg_log2FC","pct.1","pct.2","p_val_adj")]
+
+cDC1<-c('CLEC9A', 'DNASE1L3', 'C1orf54', 'IDO1', 'CLNK', 'CADM1', 'FLT3', 'ENPP1', 'XCR1', 'NDRG2')
+Mono_DC_DEA[cDC1, c("avg_log2FC","pct.1","pct.2","p_val_adj")]
+
+cDC2<-c('FCER1A', 'HLA-DQA1', 'CLEC10A', 'CD1C', 'ENHO', 'PLD4', 'GSN', 'SLC38A1', 'NDRG2', 'AFF3')
+Mono_DC_DEA[cDC2, c("avg_log2FC","pct.1","pct.2","p_val_adj")]
