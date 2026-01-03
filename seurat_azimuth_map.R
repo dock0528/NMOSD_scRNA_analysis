@@ -26,7 +26,15 @@ my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My
 my_harmony_merged_data <- RunAzimuth(my_harmony_merged_data, reference = human_pbmc_ref )
 
 
-#my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
+my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
+
+sub <- my_harmony_merged_data@meta.data[
+  my_harmony_merged_data@meta.data$predicted.celltype.l1 == "B",
+  c("predicted.celltype.l1", "predicted.celltype.l1.score",
+    "predicted.celltype.l2", "predicted.celltype.l2.score")
+]
+
+sub[order(sub$predicted.celltype.l2.score), ][1:30, ]
 
 #===【存成.h5ad】===
 #----{存Harmony後的rds}
