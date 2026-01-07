@@ -10,8 +10,8 @@ merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", sca
 
 #View(merge_data)
 
-# 讀scANVI後的metadata celltype
-celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_cell_metadata_HARMONY.csv")
+# 讀Azimuth後的metadata celltype
+celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_sub_celltype_CellChat.csv")
 head(celltype_metadata)
 
 # 確保rownames為Cell ID
@@ -20,7 +20,7 @@ rownames(celltype_metadata)<- celltype_metadata$cell_id
 # 加"分群" & "組別"加入merge_data
 merge_data <- AddMetaData(
   object = merge_data,
-  metadata = celltype_metadata$cluster_annotation,
+  metadata = celltype_metadata$sub_celltype,
   col.name = "cluster_annotation"
 )
 merge_data <- AddMetaData(
@@ -114,7 +114,7 @@ up_genes_MAST <- up_genes %>%
   dplyr::select(Celltype, `IFN-I gene`, log2FC, pval, padj)
 
 # 輸出 CSV
-write.csv(up_genes_MAST, "../scRNA_DATA/My_upregulated_df_MAST(padj_default).csv", row.names = FALSE)
+write.csv(up_genes_MAST, "../scRNA_DATA/My_upregulated_df_MAST(Azimuth).csv", row.names = FALSE)
 
 
 
