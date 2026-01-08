@@ -16,7 +16,7 @@ merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", sca
 
 #----{scANVI metadata 加入 RDS}
 # 讀scANVI後的metadata celltype
-celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_cell_metadata_CellChat.csv")
+celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_sub_celltype_CellChat.csv")
 head(celltype_metadata)
 
 # 確保rownames為Cell ID
@@ -25,7 +25,7 @@ rownames(celltype_metadata)<- celltype_metadata$cell_id
 # 加"scANVI分群" & "組別"加入merge_data
 merge_data <- AddMetaData(
   object = merge_data,
-  metadata = celltype_metadata$predicted_label,
+  metadata = celltype_metadata$sub_celltype,
   col.name = "Cell_label"
 )
 merge_data <- AddMetaData(
@@ -95,10 +95,10 @@ cellchat_NMOSD <- filterCommunication(cellchat_NMOSD, min.cells = 10) #某cellty
 
 # ===【 Infer cell–cell communication at a signaling pathway level】===
 cellchat_NMOSD <- computeCommunProbPathway(cellchat_NMOSD,thresh = 0.05) #thresh:significant interaction P-value criteria
-#saveRDS(cellchat_NMOSD, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD.rds")
+#saveRDS(cellchat_NMOSD, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD(Azimuth).rds")
 
 # ===【Import CellChat_NMOSD RDS】===
-cellchat_NMOSD <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD.rds")
+cellchat_NMOSD <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_NMOSD(Azimuth).rds")
 
 # ===【TNFRSF13C】===
 lr.idx <- grep("TNFRSF13C", cellchat_NMOSD@LR$LRsig$interaction_name)
@@ -255,7 +255,7 @@ cellchat_control <- filterCommunication(cellchat_control, min.cells = 10) #某ce
 
 # ===【 Infer cell–cell communication at a signaling pathway level】===
 cellchat_control<- computeCommunProbPathway(cellchat_control,thresh = 0.05) #thresh:significant interaction P-value criteria
-#saveRDS(cellchat_control, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control.rds")
+#saveRDS(cellchat_control, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control(Azimuth).rds")
 
 # ===【Import CellChat_control RDS】===
 cellchat_control <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control.rds")
