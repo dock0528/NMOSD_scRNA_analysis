@@ -258,7 +258,7 @@ cellchat_control<- computeCommunProbPathway(cellchat_control,thresh = 0.05) #thr
 #saveRDS(cellchat_control, file = "../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control(Azimuth).rds")
 
 # ===【Import CellChat_control RDS】===
-cellchat_control <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control.rds")
+cellchat_control <- readRDS("../scRNA_DATA/My_merged_protein_coding_genes/cellchat_control(Azimuth).rds")
 
 
 # ===【TNFRSF13C】===
