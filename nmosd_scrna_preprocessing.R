@@ -257,7 +257,70 @@ p1 <- ggplot(qc_df, aes(x = sample, y = nFeature_RNA, fill = sample)) +
   ggtitle("nFeature RNA")
 
 print(p1)
+#--------------------{ 畫 > p99 nFeature RNA }---------------------
+library(dplyr)
+library(ggplot2)
 
+library(dplyr)
+library(ggplot2)
+
+#計算每個 sample 的 nFeature_RNA 第 99 百分位數
+p99_table_new <- qc_df %>%
+  group_by(sample) %>%
+  summarise(
+    feature_cutoff_99 = quantile(nFeature_RNA, 0.99, na.rm = TRUE),
+    count_cutoff_99 = quantile(nCount_RNA, 0.99, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#合併 cutoff 回 qc_df
+qc_df_joined <- qc_df %>%
+  left_join(p99_table_new, by = "sample")
+
+#檢查合併後有沒有 feature_cutoff_99
+colnames(qc_df_joined)
+
+#只保留 nFeature_RNA > 99th percentile 的 cells
+qc_df_p99_feature <- qc_df_joined %>%
+  filter(.data$nFeature_RNA > .data$feature_cutoff_99)
+
+p99_nFeature_plot <- ggplot(qc_df_p99_feature, aes(x = sample, y = nFeature_RNA, fill = sample)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  #geom_jitter(width = 0.2, size = 0.8, alpha = 0.6) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  ) +
+  ylab("nFeature_RNA") +
+  xlab("") +
+  ggtitle("Cells with nFeature_RNA > 99th percentile")
+
+print(p99_nFeature_plot)
+
+# 畫p99 nFeature的點
+p99_feature_cutoff <- ggplot(qc_df_joined, aes(x = sample, y = nFeature_RNA, fill = sample)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_point(
+    data = p99_table_new ,
+    aes(x = sample, y = feature_cutoff_99),
+    inherit.aes = FALSE,
+    color = "red",
+    size = 2
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  ) +
+  ylab("nFeature_RNA") +
+  xlab("") +
+  ggtitle("Raw matrix – nFeature_RNA with 99th percentile cutoff")
+
+print(p99_feature_cutoff)
+#---------------------------------------------------------------------------
 
 # nCount_RNA
 p2 <- ggplot(qc_df, aes(x = sample, y = nCount_RNA, fill = sample)) +
@@ -270,6 +333,50 @@ p2 <- ggplot(qc_df, aes(x = sample, y = nCount_RNA, fill = sample)) +
   ggtitle("nCount RNA")
 
 print(p2)
+
+#--------------------{ 畫 > p99 nCount RNA }---------------------
+#只保留 nCount_RNA > 99th percentile 的 cells
+qc_df_p99_count<- qc_df_joined %>%
+  filter(.data$nCount_RNA > .data$count_cutoff_99)
+
+p99_nCount_plot <- ggplot(qc_df_p99_count, aes(x = sample, y = nCount_RNA, fill = sample)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  #geom_jitter(width = 0.2, size = 0.8, alpha = 0.6) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  ) +
+  ylab("nCount_RNA") +
+  xlab("") +
+  ggtitle("Cells with nCount_RNA > 99th percentile")
+
+print(p99_nCount_plot)
+
+# 畫p99 nCount的點
+p99_count_cutoff <- ggplot(qc_df_joined, aes(x = sample, y = nCount_RNA, fill = sample)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_point(
+    data = p99_table_new ,
+    aes(x = sample, y = count_cutoff_99),
+    inherit.aes = FALSE,
+    color = "red",
+    size = 2
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  ) +
+  ylab("nCount_RNA") +
+  xlab("") +
+  ggtitle("Raw matrix – nCount_RNA with 99th percentile cutoff")
+
+print(p99_count_cutoff)
+
+#-----------------------------------------------------------------------------
 
 # percent.mt
 p3 <- ggplot(qc_df, aes(x = sample, y = percent.mt, fill = sample)) +
