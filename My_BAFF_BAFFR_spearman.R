@@ -341,7 +341,7 @@ run_BAFF_BAFFR_one_Xcelltype <- function(
   }
   x_merge_data <- subset(merge_data, cells = x_cells)
   
-  x_n <- table(x_merge_data@meta.data$orig.ident)
+  x_n <- table(x_merge_data@meta.data$orig.ident) #mno2沒有BAFF在cDC2的數值
   
   # ----------------------{pseudobulk X RNA}----------------------
   pseudobulk_rna_x <- AggregateExpression(
@@ -375,7 +375,7 @@ run_BAFF_BAFFR_one_Xcelltype <- function(
     return(invisible(NULL))
   }
   y_merge_data <- subset(merge_data, cells = y_cells)
-  
+  y_n <- table(y_merge_data@meta.data$orig.ident)
   # ----------------------{pseudobulk Y}----------------------
   pseudobulk_rna_y <- AggregateExpression(
     y_merge_data,
