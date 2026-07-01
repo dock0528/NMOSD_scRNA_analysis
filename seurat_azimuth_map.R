@@ -20,13 +20,13 @@ dir.exists(human_pbmc_ref)
 list.files(human_pbmc_ref)
 
 #===【Harmony Data】===
-my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Harmony(protein_coding).rds")
-
+#my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Harmony(protein_coding).rds")
+my_PCA_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_PCA(protein_coding).rds")
 #===【Azimuth annotation】===
 my_harmony_merged_data <- RunAzimuth(my_harmony_merged_data, reference = human_pbmc_ref )
+my_PCA_merged_data <- RunAzimuth(my_PCA_merged_data, reference = human_pbmc_ref )
 
-
-my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
+#my_harmony_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).rds")
 
 sub <- my_harmony_merged_data@meta.data[
   my_harmony_merged_data@meta.data$predicted.celltype.l1 == "B",
@@ -59,7 +59,44 @@ SeuratDisk::Convert(
   "../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth(protein_coding).h5Seurat",
   dest = "h5ad"
 )
+#-----------------------------------{未做Harmony校正，直Azimuth map PBMC}-----------------------------
+#===【PCA Data】===
+my_PCA_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_PCA(protein_coding).rds")
 
+#===【Azimuth annotation】===
+my_PCA_merged_data <- RunAzimuth(my_PCA_merged_data, reference = human_pbmc_ref )
+
+sub <- my_PCA_merged_data@meta.data[
+  my_PCA_merged_data@meta.data$predicted.celltype.l1 == "B",
+  c("predicted.celltype.l1", "predicted.celltype.l1.score",
+    "predicted.celltype.l2", "predicted.celltype.l2.score")
+]
+
+sub[order(sub$predicted.celltype.l2.score), ][1:30, ]
+
+#===【存成.h5ad】===
+#----{存Harmony後的rds}
+library(SeuratDisk)
+saveRDS(
+  my_PCA_merged_data,
+  "../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_no_correction(protein_coding).rds"
+)
+
+#----{創建新Assay，改Assay5為Assay}
+my_PCA_merged_data_copy <- my_PCA_merged_data
+my_PCA_merged_data_copy[["RNA"]] <- as(object = my_PCA_merged_data_copy[["RNA"]], Class = "Assay")
+
+#----{保存Seurat物件為H5AD格式}
+SaveH5Seurat(
+  my_PCA_merged_data_copy,
+  filename = "../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_no_correction(protein_coding).h5Seurat"
+)
+
+#----{將.h5Seurat 轉換為.h5ad 格式}
+SeuratDisk::Convert(
+  "../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_no_correction(protein_coding).h5Seurat",
+  dest = "h5ad"
+)
 #-----------------------------------{不一定要跑，可以轉去python}-----------------------------------
 #===【KNN graph】===
 my_harmony_merged_data <- FindNeighbors(my_harmony_merged_data,k.param=20, reduction = "harmony", dims = 1:50)
