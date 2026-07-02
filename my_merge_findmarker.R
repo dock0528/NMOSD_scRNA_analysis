@@ -11,7 +11,8 @@ merge_data<-NormalizeData(merge_data, normalization.method = "LogNormalize", sca
 #View(merge_data)
 
 # 讀Azimuth後的metadata celltype
-celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_sub_celltype_CellChat.csv")
+#celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_sub_celltype_CellChat.csv")
+celltype_metadata <- read.csv("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_sub_celltype_CellChat_no_harmony.csv")
 head(celltype_metadata)
 
 # 確保rownames為Cell ID
@@ -68,7 +69,8 @@ for (cell in unique(merge_data$cluster_annotation)) {
     test.use = "MAST",
     logfc.threshold = 0,
     min.pct = 0.01,
-    min.cells.group = 3
+    min.cells.group = 3,
+    ebayes = FALSE
   )
 
   # 結果加上cell type

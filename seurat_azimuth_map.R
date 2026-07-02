@@ -3,7 +3,7 @@
 
 #---{安裝相依檔(把原始gz檔手動載到電腦 -> 再install)}
 #install.packages("../BSgenome.Hsapiens.UCSC.hg38_1.4.5.tar.gz",
-                 repos = NULL, type = "source")
+#                 repos = NULL, type = "source")
 
 #remotes::install_github('satijalab/azimuth', ref = 'master')
 
@@ -81,7 +81,7 @@ saveRDS(
   my_PCA_merged_data,
   "../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_no_correction(protein_coding).rds"
 )
-
+my_PCA_merged_data<-readRDS("../scRNA_DATA/My_merged_protein_coding_genes/My_merged_Azimuth_no_correction(protein_coding).rds")
 #----{創建新Assay，改Assay5為Assay}
 my_PCA_merged_data_copy <- my_PCA_merged_data
 my_PCA_merged_data_copy[["RNA"]] <- as(object = my_PCA_merged_data_copy[["RNA"]], Class = "Assay")
