@@ -2,6 +2,10 @@
 
 This repository contains the source code for the single-cell RNA sequencing (scRNA-seq) analysis of neuromyelitis optica spectrum disorder (NMOSD) and healthy control samples. The workflow includes quality control, normalization, dimensionality reduction, batch-effect correction, cell-type clustering, cell-type annotation, cell-type-specific expression analysis, and cell–cell interaction analysis.
 
+## Dataset
+
+The datasets used in this study involve privacy-sensitive information and are therefore not publicly available.
+
 ## Software Versions
 
 ### R
@@ -23,22 +27,7 @@ This repository contains the source code for the single-cell RNA sequencing (scR
 
 ## Analysis Workflow
 
-```mermaid
-flowchart TD
-    A(["25 NMOSD<br/>scRNA-seq matrices"]) --> D(["Low-quality cell filtering<br/>SoupX / Scrublet / Seurat"])
-    B(["3 healthy control<br/>FASTQ datasets"]) --> C(["FASTQ quality control<br/>FastQC / MultiQC"])
-    C --> C1(["Mapping and gene counting<br/>Cell Ranger"])
-    C1 --> D
-    D --> E(["Normalization<br/>VST / HVG"])
-    E --> F(["Dimensionality reduction<br/>PCA / UMAP"])
-    F --> G(["Batch-effect correction<br/>Harmony"])
-    G --> H(["Cell-type clustering<br/>Leiden"])
-    H --> I(["Cell-type annotation<br/>Azimuth"])
-    I --> J(["Cell-type-specific expression<br/>Seurat"])
-    J --> K(["Cell–cell interaction<br/>CellChat"])
-    classDef stage fill:transparent,stroke:#333,stroke-width:1px;
-    class A,B,C,C1,D,E,F,G,H,I,J,K stage;
-```
+![NMOSD scRNA-seq analysis workflow](workflow.svg)
 
 ## Analysis Pipeline and Source Code
 
