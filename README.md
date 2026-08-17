@@ -2,6 +2,10 @@
 
 This repository contains the source code for the single-cell RNA sequencing (scRNA-seq) analysis of neuromyelitis optica spectrum disorder (NMOSD) and healthy control samples. The workflow includes quality control, normalization, dimensionality reduction, batch-effect correction, cell-type clustering, cell-type annotation, cell-type-specific expression analysis, and cell–cell interaction analysis.
 
+## Dataset
+
+The datasets used in this study involve privacy-sensitive information and are therefore not publicly available.
+
 ## Software Versions
 
 ### R
