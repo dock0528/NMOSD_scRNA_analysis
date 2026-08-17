@@ -1,23 +1,30 @@
 import torch
+import time
 
-def test_gpu():
+def test_gpu_with_torch():
+    print("===== PyTorch GPU 測試 =====")
+    if not torch.cuda.is_available():
+        print("❌ 沒有偵測到 GPU")
+        return
     
-    print("PyTorch version:", torch.__version__)
-    is_cuda_available = torch.cuda.is_available()
-    print("CUDA Available:", is_cuda_available)
+    device = torch.device("cuda")
+    print(f"✅ 偵測到 GPU: {torch.cuda.get_device_name(device)}")
     
-    if is_cuda_available:
+    # 建立隨機矩陣
+    a = torch.randn(10000, 10000, device=device)
+    b = torch.randn(10000, 10000, device=device)
 
-        print("GPU Name:", torch.cuda.get_device_name(0))
-        device = torch.device("cuda") 
-        print("Running on Device:", device)
-        tensor = torch.rand((1000, 1000)).to(device)
-        print("Tensor created on GPU")
-        result = tensor @ tensor
-        print("Matrix multiplication successful on GPU")
+    torch.cuda.synchronize()
+    start = time.time()
 
-    else:
-        print("No GPU detected. Please check your CUDA setup.")
+    # 矩陣相乘
+    c = torch.matmul(a, b)
+
+    torch.cuda.synchronize()
+    end = time.time()
+
+
+    print(f"運算完成，耗時: {end - start:.4f} 秒")
 
 if __name__ == "__main__":
-    test_gpu()
+    test_gpu_with_torch()
