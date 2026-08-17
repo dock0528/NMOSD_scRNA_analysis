@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1120" viewBox="0 0 1200 1120" role="img" aria-labelledby="title desc">
+  <title id="title">NMOSD scRNA-seq analysis workflow</title>
+  <desc id="desc">Workflow from NMOSD and healthy control input data through quality control, normalization, dimensionality reduction, batch correction, clustering, annotation, expression analysis, and cell-cell interaction analysis.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333" />
+    </marker>
+    <style>
+      .box { fill: transparent; stroke: #333333; stroke-width: 2; }
+      .label { fill: #222222; font-family: Arial, Helvetica, sans-serif; font-size: 19px; text-anchor: middle; }
+      .arrow { fill: none; stroke: #333333; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="box" x="70" y="40" width="430" height="78" rx="24" />
+  <text class="label" x="285" y="72"><tspan x="285" dy="0">25 NMOSD</tspan><tspan x="285" dy="27">scRNA-seq matrices</tspan></text>
+
+  <rect class="box" x="700" y="40" width="430" height="78" rx="24" />
+  <text class="label" x="915" y="72"><tspan x="915" dy="0">3 healthy control</tspan><tspan x="915" dy="27">FASTQ datasets</tspan></text>
+
+  <rect class="box" x="700" y="165" width="430" height="78" rx="24" />
+  <text class="label" x="915" y="197"><tspan x="915" dy="0">FASTQ quality control</tspan><tspan x="915" dy="27">FastQC / MultiQC</tspan></text>
+
+  <rect class="box" x="700" y="290" width="430" height="78" rx="24" />
+  <text class="label" x="915" y="322"><tspan x="915" dy="0">Mapping and gene counting</tspan><tspan x="915" dy="27">Cell Ranger</tspan></text>
+
+  <rect class="box" x="280" y="415" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="447"><tspan x="600" dy="0">Low-quality cell filtering</tspan><tspan x="600" dy="27">SoupX / Scrublet / Seurat</tspan></text>
+
+  <rect class="box" x="280" y="540" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="572"><tspan x="600" dy="0">Normalization</tspan><tspan x="600" dy="27">VST / HVG</tspan></text>
+
+  <rect class="box" x="280" y="665" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="697"><tspan x="600" dy="0">Dimensionality reduction</tspan><tspan x="600" dy="27">PCA / UMAP</tspan></text>
+
+  <rect class="box" x="280" y="790" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="822"><tspan x="600" dy="0">Batch-effect correction</tspan><tspan x="600" dy="27">Harmony</tspan></text>
+
+  <rect class="box" x="280" y="915" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="947"><tspan x="600" dy="0">Cell-type clustering</tspan><tspan x="600" dy="27">Leiden</tspan></text>
+
+  <rect class="box" x="280" y="1040" width="640" height="78" rx="24" />
+  <text class="label" x="600" y="1072"><tspan x="600" dy="0">Cell-type annotation</tspan><tspan x="600" dy="27">Azimuth</tspan></text>
+
+  <path class="arrow" d="M 285 118 L 285 390 L 500 390 L 500 415" />
+  <path class="arrow" d="M 915 118 L 915 165" />
+  <path class="arrow" d="M 915 243 L 915 290" />
+  <path class="arrow" d="M 915 368 L 915 390 L 700 390 L 700 415" />
+  <path class="arrow" d="M 600 493 L 600 540" />
+  <path class="arrow" d="M 600 618 L 600 665" />
+  <path class="arrow" d="M 600 743 L 600 790" />
+  <path class="arrow" d="M 600 868 L 600 915" />
+  <path class="arrow" d="M 600 993 L 600 1040" />
+</svg>
