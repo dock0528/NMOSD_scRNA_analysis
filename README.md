@@ -29,17 +29,19 @@ The datasets used in this study involve privacy-sensitive information and are th
 
 ```mermaid
 flowchart TD
-    A(["25 NMOSD<br/>scRNA-seq matrices"]) --> D(["Low-quality cell filtering<br/>SoupX / Scrublet / Seurat"])
-    B(["3 healthy control<br/>FASTQ datasets"]) --> C(["FASTQ quality control<br/>FastQC / MultiQC"])
-    C --> C1(["Mapping and gene counting<br/>Cell Ranger"])
+    A(["25 NMOSD<br/>scRNA-seq matrices"]) --> D(["Low-quality cell filtering<br/>(SoupX / Scrublet / Seurat)"])
+    B(["3 healthy control<br/>FASTQ datasets"]) --> C(["FASTQ quality control<br/>(FastQC / MultiQC)"])
+    C --> C1(["Mapping and gene counting<br/>(Cell Ranger)"])
     C1 --> D
-    D --> E(["Normalization<br/>VST / HVG"])
-    E --> F(["Dimensionality reduction<br/>PCA / UMAP"])
-    F --> G(["Batch-effect correction<br/>Harmony"])
-    G --> H(["Cell-type clustering<br/>Leiden"])
-    H --> I(["Cell-type annotation<br/>Azimuth"])
-    I --> J(["Cell-type-specific expression<br/>Seurat"])
-    J --> K(["Cell–cell interaction<br/>CellChat"])
+    D --> E(["Normalization<br/>(VST / HVG)"])
+    E --> F(["Dimensionality reduction<br/>(PCA / UMAP)"])
+    F --> G(["Batch-effect correction<br/>(Harmony)"])
+    G --> H(["Cell-type clustering<br/>(Leiden)"])
+    H --> I(["Cell-type annotation<br/>(Azimuth)"])
+    I --> J(["Cell-type-specific expression<br/>(Seurat)"])
+    J --> K(["Cell–cell interaction<br/>(CellChat)"])
+    classDef normal font-weight:normal;
+    class A,B,C,C1,D,E,F,G,H,I,J,K normal;
 ```
 
 ## Analysis Pipeline and Source Code
